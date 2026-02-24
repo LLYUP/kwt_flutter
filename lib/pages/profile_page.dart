@@ -1,16 +1,14 @@
 // 个人中心页面：展示登录状态、基本信息、学期与开始日期设置等
 import 'package:flutter/material.dart';
 import 'package:kwt_flutter/services/settings.dart';
+import 'package:kwt_flutter/services/session_provider.dart';
 import 'package:kwt_flutter/config/app_config.dart';
 import 'package:kwt_flutter/services/update_service.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:kwt_flutter/pages/login_page.dart';
-import 'package:kwt_flutter/services/kwt_client.dart';
 
-/// 个人中心页
+/// 个人中心页（通过 SessionProvider 获取 client）
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key, this.client});
-  final KwtClient? client;
+  const ProfilePage({super.key});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -58,11 +56,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
   /// 从后端拉取学期选项并设置默认值
   Future<void> _loadTerms() async {
-    if (widget.client == null) return;
     setState(() => _loadingTerms = true);
     try {
-      final c = widget.client!;
-      final terms = await c.fetchTermOptions();
+      final session = SessionProvider.read(context);
+      final terms = await session.client.fetchTermOptions();
       if (terms.isNotEmpty) {
         _termOptions = terms;
         if (_termCtrl.text.isEmpty) {
@@ -100,24 +97,46 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   /// 顶部资料卡片：显示姓名、学号与登录状态
+  /// 顶部资料卡片：现代风格渐变背景与发光阴影
   Widget _buildHeaderCard() {
     final scheme = Theme.of(context).colorScheme;
     final logged = _loggedIn;
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [scheme.primary.withOpacity(0.15), scheme.primary.withOpacity(0.05)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.primary.withOpacity(0.2)),
+        gradient: LinearGradient(
+          colors: [
+            scheme.primary.withOpacity(0.85),
+            scheme.primary.withOpacity(0.6),
+            scheme.secondary.withOpacity(0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.primary.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: scheme.primary,
-            child: const Icon(Icons.person, color: Colors.white),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.2),
+            ),
+            child: const CircleAvatar(
+              radius: 32,
+              backgroundColor: Colors.white,
+              child: Icon(Icons.person, color: Colors.blueAccent, size: 36),
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 20),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,12 +147,28 @@ class _ProfilePageState extends State<ProfilePage> {
                           ? _studentName!
                           : (_studentId?.isNotEmpty == true ? _studentId! : '已登录'))
                       : '未登录',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 1.2,
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  logged ? (_studentId?.isNotEmpty == true ? '学号：$_studentId' : '学号：-') : '请登录以展示个人信息',
-                  style: Theme.of(context).textTheme.bodyMedium,
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    logged ? (_studentId?.isNotEmpty == true ? 'ID: $_studentId' : 'ID: -') : '未登录状态',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -185,7 +220,6 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ]),
           const SizedBox(height: 12),
-          // 时间模式固定，不展示
           const SizedBox(height: 24),
           _SectionTitle('关于与账户'),
           const SizedBox(height: 8),
@@ -230,7 +264,7 @@ class _ProfilePageState extends State<ProfilePage> {
               },
             ),
           ),
-          _ActionTile(icon: Icons.login_outlined, label: _loggedIn ? '退出登录' : '登录', onTap: _loginOrLogout),
+          _ActionTile(icon: Icons.login_outlined, label: '退出登录', onTap: _doLogout),
           const SizedBox(height: 24),
           Center(
             child: Text(
@@ -244,43 +278,10 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  /// 登录/退出动作：已登录则退出并清本地，未登录则跳转登录
-  void _loginOrLogout() async {
-    if (_loggedIn) {
-      // 退出：先调后端，再清本地
-      try {
-        final c = widget.client;
-        if (c != null) {
-          await c.logout();
-          await c.clearCookies();
-        }
-      } catch (_) {}
-      await _settings.clearAuth();
-      setState(() {
-        _loggedIn = false;
-        _studentId = null;
-        _studentName = null;
-      });
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已退出登录')));
-    } else {
-      // 跳到登录页
-      if (!mounted) return;
-      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginPage()));
-      final v = await _settings.isLoggedIn();
-      String? sid;
-      String? sname;
-      if (v) {
-        sid = await _settings.getStudentId();
-        sname = await _settings.getStudentName();
-      }
-      if (!mounted) return;
-      setState(() {
-        _loggedIn = v;
-        _studentId = sid;
-        _studentName = sname;
-      });
-    }
+  /// 退出登录：通过 SessionProvider 统一处理
+  void _doLogout() async {
+    final session = SessionProvider.read(context);
+    await session.logout(context);
   }
 
   Future<void> _checkForUpdate() async {
@@ -341,8 +342,6 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
-
-  // 应用内更新功能已移除，采用外部浏览器打开下载链接
 }
 
 class _SectionTitle extends StatelessWidget {
@@ -382,5 +381,3 @@ class _ContactRow extends StatelessWidget {
     );
   }
 }
-
-

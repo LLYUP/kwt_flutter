@@ -1,15 +1,17 @@
 // 班级课表页面：按学期与班级查询班级课表并网格展示
 import 'package:flutter/material.dart';
 import 'package:kwt_flutter/models/models.dart';
+import 'package:kwt_flutter/services/session_provider.dart';
 import 'package:kwt_flutter/services/kwt_client.dart';
 import 'package:kwt_flutter/utils/timetable_utils.dart';
 import 'package:kwt_flutter/common/widget/detail_row.dart';
 import 'package:kwt_flutter/common/widget/course_entry_tile.dart';
+import 'package:kwt_flutter/common/widget/common_widgets.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
-/// 班级课表页
+/// 班级课表页（通过 SessionProvider 获取 client）
 class ClassTimetablePage extends StatefulWidget {
-  const ClassTimetablePage({super.key, required this.client});
-  final KwtClient client;
+  const ClassTimetablePage({super.key});
 
   @override
   State<ClassTimetablePage> createState() => _ClassTimetablePageState();
@@ -37,20 +39,21 @@ class _ClassTimetablePageState extends State<ClassTimetablePage> {
     });
     
     try {
-      final data = await widget.client.fetchClassTimetableStructured(
-        term: _termCtrl.text.trim(),
-        timeMode: KwtClient.defaultTimeMode,
-        className: _classCtrl.text.trim(),
+      final session = SessionProvider.read(context);
+      final data = await session.safeCall(context, () =>
+        session.client.fetchClassTimetableStructured(
+          term: _termCtrl.text.trim(),
+          timeMode: KwtClient.defaultTimeMode,
+          className: _classCtrl.text.trim(),
+        ),
       );
-      setState(() => _list = data);
-    } on AuthExpiredException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-      Navigator.of(context).pop();
+      if (data != null) {
+        setState(() => _list = data);
+      }
     } catch (e) {
       setState(() => _error = '加载失败: $e');
     } finally {
-      setState(() => _busy = false);
+      if (mounted) setState(() => _busy = false);
     }
     
     // 查询后取消班级输入框焦点
@@ -66,9 +69,10 @@ class _ClassTimetablePageState extends State<ClassTimetablePage> {
   /// 初始化学期选项并默认选择最新学期
   Future<void> _init() async {
     try {
-      _termOptions = await widget.client.fetchTermOptions();
+      final session = SessionProvider.read(context);
+      _termOptions = await session.client.fetchTermOptions();
       if (_termCtrl.text.isEmpty && _termOptions.isNotEmpty) {
-        _termCtrl.text = _termOptions.first; // 最新学期
+        _termCtrl.text = _termOptions.first;
       }
     } catch (_) {}
     setState(() {});
@@ -195,30 +199,9 @@ class _ClassTimetablePageState extends State<ClassTimetablePage> {
             ),
           ),
 
-          if (_error != null)
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red[200]!),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.error_outline, color: Colors.red[600], size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _error!,
-                      style: TextStyle(color: Colors.red[600]),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          if (_error != null) AppErrorWidget(message: _error!),
 
-          // 提示：左右滑动查看更多（放在查询条件与课表卡片之间）
+          // 提示：左右滑动查看更多
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: Row(
@@ -232,16 +215,7 @@ class _ClassTimetablePageState extends State<ClassTimetablePage> {
           ),
           Expanded(
             child: _busy
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('加载中...', style: TextStyle(color: Colors.grey)),
-                      ],
-                    ),
-                  )
+                ? const AppLoadingWidget()
                 : _GridWeek(entries: _list),
           ),
         ],
@@ -257,31 +231,41 @@ class _GridWeek extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = _buildGrid(entries);
-    return Container(
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-        border: Border.all(color: Colors.grey[100]!),
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: PageView(
-              children: [
-                _buildSubgrid(grid, const [1, 2, 3, 4, 5]),
-                _buildSubgrid(grid, const [6, 7]),
-              ],
+    return AnimationLimiter(
+      child: AnimationConfiguration.synchronized(
+        duration: const Duration(milliseconds: 500),
+        child: SlideAnimation(
+          verticalOffset: 50.0,
+          child: FadeInAnimation(
+            child: Container(
+              margin: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+                border: Border.all(color: Colors.grey[100]!),
+              ),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: PageView(
+                      children: [
+                        _buildSubgrid(grid, const [1, 2, 3, 4, 5]),
+                        _buildSubgrid(grid, const [6, 7]),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -430,7 +414,6 @@ class _Cell extends StatelessWidget {
             ),
     );
   }
-
 }
 
 class DashedDivider extends StatelessWidget {
@@ -483,5 +466,3 @@ class _DashedLinePainter extends CustomPainter {
         oldDelegate.dashGap != dashGap;
   }
 }
-
-

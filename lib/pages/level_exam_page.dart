@@ -1,12 +1,12 @@
-// 等级考试页面：支持搜索、刷新与卡片式结果展示
 import 'package:flutter/material.dart';
 import 'package:kwt_flutter/models/models.dart';
-import 'package:kwt_flutter/services/kwt_client.dart';
+import 'package:kwt_flutter/services/session_provider.dart';
+import 'package:kwt_flutter/common/widget/common_widgets.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
-/// 等级考试列表页
+/// 等级考试列表页（通过 SessionProvider 获取 client）
 class LevelExamPage extends StatefulWidget {
-  const LevelExamPage({super.key, required this.client});
-  final KwtClient client;
+  const LevelExamPage({super.key});
 
   @override
   State<LevelExamPage> createState() => _LevelExamPageState();
@@ -55,15 +55,20 @@ class _LevelExamPageState extends State<LevelExamPage> {
       _error = null;
     });
     try {
-      final data = await widget.client.fetchExamLevel();
-      setState(() {
-        _list = data;
-        _filteredList = data;
-      });
+      final session = SessionProvider.read(context);
+      final data = await session.safeCall(context, () =>
+        session.client.fetchExamLevel(),
+      );
+      if (data != null) {
+        setState(() {
+          _list = data;
+          _filteredList = data;
+        });
+      }
     } catch (e) {
       setState(() => _error = '加载失败: $e');
     } finally {
-      setState(() => _busy = false);
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -80,40 +85,10 @@ class _LevelExamPageState extends State<LevelExamPage> {
       body: Column(
         children: [
           // 搜索栏
-          Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[200]!),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.search, color: Colors.grey[600], size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: const InputDecoration(
-                      hintText: '搜索课程名称或等级...',
-                      border: InputBorder.none,
-                      hintStyle: TextStyle(color: Colors.grey),
-                    ),
-                  ),
-                ),
-                if (_searchController.text.isNotEmpty)
-                  IconButton(
-                    onPressed: () {
-                      _searchController.clear();
-                      _filterData();
-                    },
-                    icon: Icon(Icons.clear, color: Colors.grey[600], size: 18),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-                  ),
-              ],
-            ),
+          AppSearchBar(
+            controller: _searchController,
+            hintText: '搜索课程名称或等级...',
+            onClear: _filterData,
           ),
           
           // 统计信息
@@ -141,41 +116,11 @@ class _LevelExamPageState extends State<LevelExamPage> {
               ),
             ),
 
-          if (_error != null)
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red[200]!),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.error_outline, color: Colors.red[600], size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _error!,
-                      style: TextStyle(color: Colors.red[600]),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          if (_error != null) AppErrorWidget(message: _error!),
 
           Expanded(
             child: _busy
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('加载中...', style: TextStyle(color: Colors.grey)),
-                      ],
-                    ),
-                  )
+                ? const AppLoadingWidget()
                 : _filteredList.isEmpty
                     ? _buildEmptyState()
                     : _buildExamList(),
@@ -186,48 +131,28 @@ class _LevelExamPageState extends State<LevelExamPage> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.search_off,
-            size: 64,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            _searchController.text.isEmpty ? '暂无等级考试数据' : '未找到相关课程',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          if (_searchController.text.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              '尝试使用其他关键词搜索',
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ],
-      ),
+    return AppEmptyWidget(
+      message: _searchController.text.isEmpty ? '暂无等级考试数据' : '未找到相关课程',
+      subtitle: _searchController.text.isNotEmpty ? '尝试使用其他关键词搜索' : null,
     );
   }
 
   Widget _buildExamList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _filteredList.length,
-      itemBuilder: (context, index) {
-        final entry = _filteredList[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
+    return AnimationLimiter(
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _filteredList.length,
+        itemBuilder: (context, index) {
+          final entry = _filteredList[index];
+          return AnimationConfiguration.staggeredList(
+            position: index,
+            duration: const Duration(milliseconds: 375),
+            child: SlideAnimation(
+              verticalOffset: 50.0,
+              child: FadeInAnimation(
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
@@ -356,9 +281,9 @@ class _LevelExamPageState extends State<LevelExamPage> {
               ),
             ],
           ),
-        );
+        ))));
       },
-    );
+    ));
   }
 
   Widget _buildScoreCard(String label, String score, String level, Color color, {bool isTotal = false}) {
@@ -434,5 +359,3 @@ class _LevelExamPageState extends State<LevelExamPage> {
     );
   }
 }
-
-

@@ -1,19 +1,13 @@
-// 课程成绩页面：支持按学期查询、关键词搜索与统计展示
-// 主要功能：
-// 1) 选择学期并从后端加载成绩数据
-// 2) 实时搜索课程名称/代码
-// 3) 统计结果数量与平均分，并支持查看单条成绩详情
 import 'package:flutter/material.dart';
 import 'package:kwt_flutter/models/models.dart';
-import 'package:kwt_flutter/services/kwt_client.dart';
+import 'package:kwt_flutter/services/session_provider.dart';
 import 'package:kwt_flutter/common/widget/detail_row.dart';
+import 'package:kwt_flutter/common/widget/common_widgets.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
-/// 成绩列表页入口组件
-///
-/// 通过注入的 [KwtClient] 从后端获取成绩数据，并在页面中提供搜索与统计能力。
+/// 成绩列表页入口组件（通过 SessionProvider 获取 client）
 class GradesPage extends StatefulWidget {
-  const GradesPage({super.key, required this.client});
-  final KwtClient client;
+  const GradesPage({super.key});
 
   @override
   State<GradesPage> createState() => _GradesPageState();
@@ -44,20 +38,17 @@ class _GradesPageState extends State<GradesPage> {
     super.dispose();
   }
 
-  /// 触发筛选流程（委托给 [_applyFilters]），用于响应输入框变更
+  /// 触发筛选流程
   void _filterData() {
     _applyFilters();
   }
 
   /// 根据当前搜索关键词对 [_grades] 进行过滤
-  ///
-  /// - 搜索范围：课程名称、课程代码（大小写不敏感）
   void _applyFilters() {
     final query = _searchController.text.toLowerCase();
     
     setState(() {
       _filteredGrades = _grades.where((grade) {
-        // 搜索过滤
         final matchesSearch = query.isEmpty || 
             grade.courseName.toLowerCase().contains(query) ||
             grade.courseCode.toLowerCase().contains(query);
@@ -67,46 +58,45 @@ class _GradesPageState extends State<GradesPage> {
   }
 
   /// 根据当前选择的学期从后端加载成绩数据
-  ///
-  /// 若选择“全部学期”，将不携带学期参数，请求返回所有成绩。
   Future<void> _load() async {
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
+      final session = SessionProvider.read(context);
       final picked = _termCtrl.text.trim();
       final termParam = picked == '全部学期' ? '' : picked;
-      final data = await widget.client.fetchGradesStructured(term: termParam);
-      setState(() {
-        _grades = data;
-        _filteredGrades = data;
-      });
-    } on AuthExpiredException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-      Navigator.of(context).pop();
+      final data = await session.safeCall(context, () =>
+        session.client.fetchGradesStructured(term: termParam),
+      );
+      if (data != null) {
+        setState(() {
+          _grades = data;
+          _filteredGrades = data;
+        });
+      }
     } catch (e) {
       setState(() => _error = '加载失败: $e');
     } finally {
-      setState(() => _busy = false);
+      if (mounted) setState(() => _busy = false);
     }
   }
 
-  /// 初始化学期选项并设置默认选中项（通常为最新学期）
+  /// 初始化学期选项并设置默认选中项
   Future<void> _init() async {
     try {
-      final terms = await widget.client.fetchTermOptions();
+      final session = SessionProvider.read(context);
+      final terms = await session.client.fetchTermOptions();
       _termOptions = ['全部学期', ...terms];
       if (_termCtrl.text.isEmpty && terms.isNotEmpty) {
-        _termCtrl.text = terms.first; // 默认最新学期
+        _termCtrl.text = terms.first;
       }
     } catch (_) {}
     setState(() {});
   }
 
   @override
-  /// 页面主构建函数：包含查询条件区、搜索筛选区、统计信息区与成绩表格
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -307,302 +297,175 @@ class _GradesPageState extends State<GradesPage> {
               ),
             ),
 
-          if (_error != null)
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red[200]!),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.error_outline, color: Colors.red[600], size: 20),
-              const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _error!,
-                      style: TextStyle(color: Colors.red[600]),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          if (_error != null) AppErrorWidget(message: _error!),
 
-          Expanded(
+                  Expanded(
             child: _busy
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('加载中...', style: TextStyle(color: Colors.grey)),
-                      ],
-                    ),
-                  )
+                ? const AppLoadingWidget()
                 : _filteredGrades.isEmpty
                     ? _buildEmptyState()
-                    : _buildGradesTable(),
+                    : _buildGradesList(),
           ),
         ],
       ),
     );
   }
 
-  /// 空数据占位视图：根据是否处于搜索态展示不同提示
+  /// 空数据占位视图
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.search_off,
-            size: 64,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            _searchController.text.isEmpty ? '暂无成绩数据' : '未找到相关课程',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          if (_searchController.text.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              '尝试使用其他关键词搜索',
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ],
-      ),
+    return AppEmptyWidget(
+      message: _searchController.text.isEmpty ? '暂无成绩数据' : '未找到相关课程',
+      subtitle: _searchController.text.isNotEmpty ? '尝试使用其他关键词搜索' : null,
     );
   }
 
-  /// 成绩表格：表头 + 列表行 + 点击查看详情
-  Widget _buildGradesTable() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // 表头
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.blue[50],
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 1, // 序号更小
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    child: Text(
-                      '序号',
-                      style: TextStyle(
-                        color: Colors.blue[700],
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2, // 课程名称更小
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        left: BorderSide(color: Colors.blue[200]!),
-                      ),
-                    ),
-                    child: Text(
-                      '课程名称',
-                      style: TextStyle(
-                        color: Colors.blue[700],
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 3, // 合并成绩、学分、GPA
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        left: BorderSide(color: Colors.blue[200]!),
-                      ),
-                    ),
-                    child: Text(
-                      '成绩 / 学分 / GPA',
-                      style: TextStyle(
-                        color: Colors.blue[700],
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // 表格内容
-          Expanded(
-            child: ListView.builder(
-              itemCount: _filteredGrades.length,
-              itemBuilder: (context, index) {
-                final grade = _filteredGrades[index];
-                final scoreColor = _getScoreColor(grade.score);
-                return Container(
+  /// 成绩列表（卡片式设计）
+  Widget _buildGradesList() {
+    return AnimationLimiter(
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: _filteredGrades.length,
+        itemBuilder: (context, index) {
+          final grade = _filteredGrades[index];
+          final scoreColor = _getScoreColor(grade.score);
+          return AnimationConfiguration.staggeredList(
+            position: index,
+            duration: const Duration(milliseconds: 375),
+            child: SlideAnimation(
+              verticalOffset: 50.0,
+              child: FadeInAnimation(
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: index.isEven ? Colors.grey[50] : Colors.white,
-                    border: Border(
-                      bottom: BorderSide(color: Colors.grey[200]!),
-                    ),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                    border: Border.all(color: Colors.grey[100]!),
                   ),
-                  child: InkWell(
-                    onTap: () => _showGradeDetail(grade),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          flex: 1,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            child: Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 13,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => _showGradeDetail(grade),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // 序号
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: Colors.blue[50],
+                                shape: BoxShape.circle,
                               ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                left: BorderSide(color: Colors.blue[200]!),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${index + 1}',
+                                style: TextStyle(
+                                  color: Colors.blue[700],
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
                               ),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            const SizedBox(width: 16),
+                            
+                            // 课程信息
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    grade.courseName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                      color: Colors.black87,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[100],
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          grade.courseAttr,
+                                          style: TextStyle(
+                                            color: Colors.grey[700],
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '学分: ${grade.credit}',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            
+                            // 成绩 & GPA
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  grade.courseName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
+                                  grade.score,
+                                  style: TextStyle(
+                                    color: scoreColor,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 22,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: Colors.orange[100],
-                                    borderRadius: BorderRadius.circular(8),
+                                    color: Colors.purple[50],
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    grade.courseAttr,
+                                    'GPA: ${grade.gpa}',
                                     style: TextStyle(
-                                      color: Colors.orange[800],
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w500,
+                                      color: Colors.purple[700],
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
                               ],
                             ),
-                          ),
+                          ],
                         ),
-                        Expanded(
-                          flex: 3,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                left: BorderSide(color: Colors.blue[200]!),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                Text(
-                                  grade.score,
-                                  style: TextStyle(
-                                    color: scoreColor.withOpacity(0.8),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                Container(
-                                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                                  width: 1,
-                                  height: 18,
-                                  color: Colors.grey[300],
-                                ),
-                                Text(
-                                  grade.credit,
-                                  style: TextStyle(
-                                    color: Colors.grey[700],
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                Container(
-                                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                                  width: 1,
-                                  height: 18,
-                                  color: Colors.grey[300],
-                                ),
-                                Text(
-                                  grade.gpa,
-                                  style: TextStyle(
-                                    color: Colors.purple[700],
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                );
-              },
+                ),
+              ),
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -650,9 +513,7 @@ class _GradesPageState extends State<GradesPage> {
     );
   }
 
-
-
-  /// 将分数区间映射为不同颜色，便于快速识别成绩水平
+  /// 将分数区间映射为不同颜色
   Color _getScoreColor(String score) {
     final scoreValue = double.tryParse(score) ?? 0;
     if (scoreValue >= 90) return Colors.green;
@@ -662,7 +523,7 @@ class _GradesPageState extends State<GradesPage> {
     return Colors.red;
   }
 
-  /// 计算当前过滤结果的平均分（保留 1 位小数）
+  /// 计算当前过滤结果的平均分
   String _calculateAverageScore() {
     if (_filteredGrades.isEmpty) return '0.0';
     
@@ -681,5 +542,3 @@ class _GradesPageState extends State<GradesPage> {
     return (total / count).toStringAsFixed(1);
   }
 }
-
-

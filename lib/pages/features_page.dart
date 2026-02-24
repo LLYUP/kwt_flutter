@@ -3,16 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:kwt_flutter/pages/class_timetable_page.dart';
 import 'package:kwt_flutter/pages/grades_page.dart';
 import 'package:kwt_flutter/pages/level_exam_page.dart';
-import 'package:kwt_flutter/services/kwt_client.dart';
-import 'package:kwt_flutter/services/settings.dart';
-import 'package:kwt_flutter/pages/login_page.dart';
 import 'package:kwt_flutter/pages/schedule_time_page.dart';
 import 'package:kwt_flutter/pages/academic_calendar_page.dart';
 
-/// 功能入口页
+/// 功能入口页（不再需要外部传入 client）
 class FeaturesPage extends StatelessWidget {
-  const FeaturesPage({super.key, required this.client});
-  final KwtClient client;
+  const FeaturesPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -38,11 +34,11 @@ class FeaturesPage extends StatelessWidget {
                   crossAxisSpacing: spacing,
                   mainAxisSpacing: spacing,
                   children: [
-                    _tileSized(context, '班级课表', Icons.class_, itemWidth, itemHeight, () => _push(context, ClassTimetablePage(client: client))),
-                    _tileSized(context, '课程成绩', Icons.grade, itemWidth, itemHeight, () => _push(context, GradesPage(client: client))),
-                    _tileSized(context, '等级考试', Icons.assessment, itemWidth, itemHeight, () => _push(context, LevelExamPage(client: client))),
-                    _tileSized(context, '作息时间', Icons.schedule, itemWidth, itemHeight, () => _push(context, const ScheduleTimePage())),
-                    _tileSized(context, '校历', Icons.calendar_month, itemWidth, itemHeight, () => _push(context, const AcademicCalendar())),
+                    _tileSized(context, '班级课表', Icons.class_, itemWidth, itemHeight, () => _push(context, const ClassTimetablePage())),
+                    _tileSized(context, '课程成绩', Icons.grade, itemWidth, itemHeight, () => _push(context, const GradesPage())),
+                    _tileSized(context, '等级考试', Icons.assessment, itemWidth, itemHeight, () => _push(context, const LevelExamPage())),
+                    _tileSized(context, '作息时间', Icons.schedule, itemWidth, itemHeight, () => _push(context, const ScheduleTimePage()), requireLogin: false),
+                    _tileSized(context, '校历', Icons.calendar_month, itemWidth, itemHeight, () => _push(context, const AcademicCalendar()), requireLogin: false),
                   ],
                 );
               },
@@ -56,22 +52,8 @@ class FeaturesPage extends StatelessWidget {
   /// 功能卡片
   Widget _tileSized(BuildContext context, String label, IconData icon, double w, double h, VoidCallback onTap, {bool requireLogin = true}) {
     return InkWell(
-      onTap: () async {
-        if (!requireLogin) {
-          onTap();
-          return;
-        }
-        final settings = SettingsService();
-        final loggedIn = await settings.isLoggedIn();
-        if (!loggedIn) {
-          // 未登录：跳转到登录页
-          await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginPage()));
-          final v = await settings.isLoggedIn();
-          if (v) {
-            onTap();
-          }
-          return;
-        }
+      onTap: () {
+        // 在 SessionProvider 包裹下，已登录才能进入此页，无需再次检查
         onTap();
       },
       child: Card(
@@ -111,5 +93,3 @@ class FeaturesPage extends StatelessWidget {
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 }
-
-

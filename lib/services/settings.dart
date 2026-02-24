@@ -1,7 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kwt_flutter/config/app_config.dart';
 
-// 本地设置服务：封装 SharedPreferences 的键值读写
+// 本地设置服务：封装 SharedPreferences 的键值读写（带缓存）
 class SettingsService {
   static const _keyTerm = 'kwt.term';
   static const _keyStartDate = 'kwt.startDate';
@@ -13,59 +13,73 @@ class SettingsService {
   static const _keySavedPassword = 'kwt.savedPassword';
   static const _keyRememberedStudentId = 'kwt.rememberedStudentId';
 
+  /// 缓存的 SharedPreferences 实例
+  static SharedPreferences? _prefs;
+
+  /// 在 main() 中调用一次，预初始化 SharedPreferences
+  static Future<void> init() async {
+    _prefs ??= await SharedPreferences.getInstance();
+  }
+
+  /// 获取缓存实例（若未初始化则自动获取）
+  Future<SharedPreferences> get _sp async {
+    _prefs ??= await SharedPreferences.getInstance();
+    return _prefs!;
+  }
+
   Future<void> saveTerm(String term) async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     await sp.setString(_keyTerm, term);
   }
 
   Future<void> saveStartDate(String date) async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     await sp.setString(_keyStartDate, date);
   }
 
   Future<String?> getTerm() async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     return sp.getString(_keyTerm);
   }
 
   Future<String?> getStartDate() async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     return sp.getString(_keyStartDate);
   }
 
   Future<void> setLoggedIn(bool v) async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     await sp.setBool(_keyLoggedIn, v);
   }
 
   Future<bool> isLoggedIn() async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     return sp.getBool(_keyLoggedIn) ?? false;
   }
 
   Future<void> saveStudentId(String id) async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     await sp.setString(_keyStudentId, id);
   }
 
   Future<String?> getStudentId() async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     return sp.getString(_keyStudentId);
   }
 
   Future<void> saveStudentName(String name) async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     await sp.setString(_keyStudentName, name);
   }
 
   Future<String?> getStudentName() async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     return sp.getString(_keyStudentName);
   }
 
   /// 清除本地登录态与基础账户信息
   Future<void> clearAuth() async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     await sp.setBool(_keyLoggedIn, false);
     await sp.remove(_keyStudentId);
     await sp.remove(_keyStudentName);
@@ -73,12 +87,12 @@ class SettingsService {
 
   // 网络环境相关方法
   Future<void> saveNetworkEnvironment(String environment) async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     await sp.setString(_keyNetworkEnvironment, environment);
   }
 
   Future<String?> getNetworkEnvironment() async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     return sp.getString(_keyNetworkEnvironment);
   }
 
@@ -93,7 +107,7 @@ class SettingsService {
 
   // 记住密码与本地保存的密码
   Future<void> setRememberPassword(bool remember) async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     await sp.setBool(_keyRememberPassword, remember);
     if (!remember) {
       await sp.remove(_keySavedPassword);
@@ -102,30 +116,28 @@ class SettingsService {
   }
 
   Future<bool> getRememberPassword() async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     return sp.getBool(_keyRememberPassword) ?? false;
   }
 
   Future<void> savePassword(String password) async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     await sp.setString(_keySavedPassword, password);
   }
 
   Future<String?> getSavedPassword() async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     return sp.getString(_keySavedPassword);
   }
 
-  // 记住的学号（与“记住账号与密码”联动）
+  // 记住的学号（与"记住账号与密码"联动）
   Future<void> saveRememberedStudentId(String studentId) async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     await sp.setString(_keyRememberedStudentId, studentId);
   }
 
   Future<String?> getRememberedStudentId() async {
-    final sp = await SharedPreferences.getInstance();
+    final sp = await _sp;
     return sp.getString(_keyRememberedStudentId);
   }
 }
-
-

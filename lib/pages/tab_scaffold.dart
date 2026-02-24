@@ -1,14 +1,12 @@
-// 底部 Tab 框架页：承载课表/功能/我的
+// 底部 Tab 框架页：承载课表/功能/我的，使用 IndexedStack 保持页面状态
 import 'package:flutter/material.dart';
 import 'package:kwt_flutter/pages/features_page.dart';
 import 'package:kwt_flutter/pages/profile_page.dart';
 import 'package:kwt_flutter/pages/timetable_page.dart';
-import 'package:kwt_flutter/services/kwt_client.dart';
 
-/// Tab 容器页
+/// Tab 容器页（不再需要外部传入 client，通过 SessionProvider 获取）
 class TabScaffold extends StatefulWidget {
-  const TabScaffold({super.key, required this.client});
-  final KwtClient client;
+  const TabScaffold({super.key});
 
   @override
   State<TabScaffold> createState() => _TabScaffoldState();
@@ -17,43 +15,43 @@ class TabScaffold extends StatefulWidget {
 class _TabScaffoldState extends State<TabScaffold> {
   int _index = 0;
 
-  /// 处理物理返回键：弹出确认对话框，防止误退出
-  Future<bool> _onWillPop() async {
-    // 显示确认对话框
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('确认退出'),
-        content: const Text('您确定要退出应用吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(true);
-            },
-            child: const Text('退出'),
-          ),
-        ],
-      ),
-    );
-    
-    return result ?? false;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      TimetablePage(client: widget.client),
-      FeaturesPage(client: widget.client),
-      ProfilePage(client: widget.client),
-    ];
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        // 显示确认退出对话框
+        final shouldPop = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('确认退出'),
+            content: const Text('您确定要退出应用吗？'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('取消'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('退出'),
+              ),
+            ],
+          ),
+        );
+        if (shouldPop == true && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
       child: Scaffold(
-        body: pages[_index],
+        body: IndexedStack(
+          index: _index,
+          children: const [
+            TimetablePage(),
+            FeaturesPage(),
+            ProfilePage(),
+          ],
+        ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _index,
           destinations: const [
@@ -67,5 +65,3 @@ class _TabScaffoldState extends State<TabScaffold> {
     );
   }
 }
-
-

@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:kwt_flutter/services/kwt_client.dart';
 import 'package:kwt_flutter/services/settings.dart';
+import 'package:kwt_flutter/services/session_provider.dart';
+import 'package:kwt_flutter/pages/tab_scaffold.dart';
 import 'package:kwt_flutter/config/app_config.dart';
 
 /// 登录页
@@ -131,7 +133,12 @@ class _LoginPageState extends State<LoginPage> {
         }
       } catch (_) {}
       if (!mounted) return;
-      Navigator.of(context).pushNamedAndRemoveUntil('/tabs', (route) => false, arguments: _client);
+      // 登录成功后，更新 SessionProvider 并导航
+      SessionProvider.read(context).updateClient(_client);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const TabScaffold()),
+        (route) => false,
+      );
     } catch (e) {
       setState(() => _error = '登录异常: $e');
     } finally {

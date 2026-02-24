@@ -1,17 +1,15 @@
 // 个人课表页面：按周展示个人课表，支持自动推算周次、选择周次与刷新
 import 'package:flutter/material.dart';
 import 'package:kwt_flutter/models/models.dart';
-import 'package:kwt_flutter/services/kwt_client.dart';
+import 'package:kwt_flutter/services/session_provider.dart';
 import 'package:kwt_flutter/services/settings.dart';
 import 'package:kwt_flutter/utils/timetable_utils.dart';
-import 'package:kwt_flutter/pages/login_page.dart';
-import 'package:kwt_flutter/common/widget/detail_row.dart';
+import 'package:kwt_flutter/common/widget/common_widgets.dart';
 import 'package:kwt_flutter/config/app_config.dart';
 
 /// 个人课表页
 class TimetablePage extends StatefulWidget {
-  const TimetablePage({super.key, required this.client});
-  final KwtClient client;
+  const TimetablePage({super.key});
 
   @override
   State<TimetablePage> createState() => _TimetablePageState();
@@ -27,6 +25,7 @@ class _TimetablePageState extends State<TimetablePage> {
   List<TimetableEntry> _timetable = const [];
   List<MergedTimetableEntry> _mergedTimetable = const [];
   int _weekNo = 1;
+  bool _initialized = false;
 
   @override
   void initState() {
@@ -38,7 +37,7 @@ class _TimetablePageState extends State<TimetablePage> {
   Future<void> _initFromSettings() async {
     _termCtrl.text = await _settings.getTerm() ?? AppConfig.defaultTerm;
     final savedStart = await _settings.getStartDate() ?? '';
-    _timeModeCtrl.text = KwtClient.defaultTimeMode;
+    _timeModeCtrl.text = AppConfig.defaultTimeMode;
 
     // 依据开始日期与系统时间自动设置周次与日期
     if (savedStart.isNotEmpty) {
@@ -54,7 +53,7 @@ class _TimetablePageState extends State<TimetablePage> {
       _weekNo = 1;
     }
 
-    setState(() {});
+    setState(() => _initialized = true);
     await _load();
   }
 
@@ -84,27 +83,24 @@ class _TimetablePageState extends State<TimetablePage> {
       _error = null;
     });
     try {
-      final data = await widget.client.fetchPersonalTimetableStructured(
-        date: _dateCtrl.text.trim(),
-        timeMode: _timeModeCtrl.text.trim(),
-        termId: _termCtrl.text.trim(),
+      final session = SessionProvider.read(context);
+      final data = await session.safeCall(context, () =>
+        session.client.fetchPersonalTimetableStructured(
+          date: _dateCtrl.text.trim(),
+          timeMode: _timeModeCtrl.text.trim(),
+          termId: _termCtrl.text.trim(),
+        ),
       );
-      setState(() => _timetable = data);
-      setState(() => _mergedTimetable = mergeContinuousCourses(data));
-    } on AuthExpiredException catch (e) {
-      // 登录会话失效：清 Cookie、清登录态并跳回登录
-      try { await widget.client.clearCookies(); } catch (_) {}
-      await _settings.clearAuth();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-      await Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-        (route) => false,
-      );
+      if (data != null) {
+        setState(() {
+          _timetable = data;
+          _mergedTimetable = mergeContinuousCourses(data);
+        });
+      }
     } catch (e) {
       setState(() => _error = '加载失败: $e');
     } finally {
-      setState(() => _busy = false);
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -122,21 +118,12 @@ class _TimetablePageState extends State<TimetablePage> {
             _buildWeekHeader(days),
             
             // 错误信息
-            if (_error != null) _buildErrorMessage(),
+            if (_error != null) AppErrorWidget(message: _error!),
             
             // 课表内容
             Expanded(
               child: _busy
-                  ? const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircularProgressIndicator(),
-                          SizedBox(height: 16),
-                          Text('加载中...', style: TextStyle(color: Colors.grey)),
-                        ],
-                      ),
-                    )
+                  ? const AppLoadingWidget()
                   : _buildTimetableContent(days),
             ),
           ],
@@ -225,7 +212,7 @@ class _TimetablePageState extends State<TimetablePage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    elevation: 0, // 移除阴影
+                    elevation: 0,
                   ),
                 ),
               ),
@@ -239,18 +226,9 @@ class _TimetablePageState extends State<TimetablePage> {
   // 构建课表内容
   Widget _buildTimetableContent(List<DateTime> days) {
     if (_mergedTimetable.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.event_busy, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              '本周暂无课程安排',
-              style: TextStyle(color: Colors.grey[600], fontSize: 16),
-            ),
-          ],
-        ),
+      return const AppEmptyWidget(
+        message: '本周暂无课程安排',
+        icon: Icons.event_busy,
       );
     }
 
@@ -274,14 +252,14 @@ class _TimetablePageState extends State<TimetablePage> {
       child: Row(
         children: [
           Container(
-            width: 50, // 与网格行保持一致
+            width: 50,
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
               '时间',
               style: TextStyle(
                 color: Colors.grey[700],
                 fontWeight: FontWeight.w600,
-                fontSize: 12, // 减小字体
+                fontSize: 12,
               ),
               textAlign: TextAlign.center,
             ),
@@ -302,7 +280,7 @@ class _TimetablePageState extends State<TimetablePage> {
                       style: TextStyle(
                         color: Colors.grey[700],
                         fontWeight: FontWeight.w600,
-                        fontSize: 12, // 减小字体
+                        fontSize: 12,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -370,7 +348,7 @@ class _TimetablePageState extends State<TimetablePage> {
   // 构建基础网格行（固定高度）
   Widget _buildBaseGridRow(int section) {
     return Container(
-      height: 60, // 固定高度
+      height: 60,
       decoration: BoxDecoration(
         border: Border(
           top: section == 1 ? BorderSide.none : BorderSide(color: Colors.grey[300]!),
@@ -434,9 +412,9 @@ class _TimetablePageState extends State<TimetablePage> {
     final List<Widget> overlays = [];
     
     for (final course in _mergedTimetable) {
-      final dayIndex = course.dayOfWeek - 1; // 0-6
-      final startSection = course.startSection; // 1-12
-      final endSection = course.endSection; // 1-12
+      final dayIndex = course.dayOfWeek - 1;
+      final startSection = course.startSection;
+      final endSection = course.endSection;
       
       // 计算位置，考虑分割线的影响
       final cellWidth = (containerWidth - 50) / 7;
@@ -447,27 +425,21 @@ class _TimetablePageState extends State<TimetablePage> {
       double height = 0;
       
       if (startSection <= 5 && endSection <= 5) {
-        // 全部在第1-5节
         top = 60.0 * (startSection - 1);
         height = 60.0 * (endSection - startSection + 1);
       } else if (startSection <= 5 && endSection > 5 && endSection <= 9) {
-        // 跨越午休：从第1-5节到第6-9节
         top = 60.0 * (startSection - 1);
         height = 60.0 * (5 - startSection + 1) + 30.0 + 60.0 * (endSection - 6 + 1);
       } else if (startSection <= 5 && endSection > 9) {
-        // 跨越午休和晚休：从第1-5节到第10-12节
         top = 60.0 * (startSection - 1);
         height = 60.0 * (5 - startSection + 1) + 30.0 + 60.0 * 4 + 30.0 + 60.0 * (endSection - 10 + 1);
       } else if (startSection >= 6 && startSection <= 9 && endSection <= 9) {
-        // 全部在第6-9节
         top = 60.0 * 5 + 30.0 + 60.0 * (startSection - 6);
         height = 60.0 * (endSection - startSection + 1);
       } else if (startSection >= 6 && startSection <= 9 && endSection > 9) {
-        // 跨越晚休：从第6-9节到第10-12节
         top = 60.0 * 5 + 30.0 + 60.0 * (startSection - 6);
         height = 60.0 * (9 - startSection + 1) + 30.0 + 60.0 * (endSection - 10 + 1);
       } else {
-        // 全部在第10-12节
         top = 60.0 * 5 + 30.0 + 60.0 * 4 + 30.0 + 60.0 * (startSection - 10);
         height = 60.0 * (endSection - startSection + 1);
       }
@@ -501,7 +473,6 @@ class _TimetablePageState extends State<TimetablePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // 课程名称 - 主要信息
           Text(
             course.courseName,
             style: TextStyle(
@@ -510,9 +481,8 @@ class _TimetablePageState extends State<TimetablePage> {
               fontSize: 12,
               height: 1.2,
             ),
-            maxLines: null, // 允许多行显示
+            maxLines: null,
           ),
-          // 地点信息 - 次要信息
           if (course.location.isNotEmpty) ...[
             const SizedBox(height: 3),
             Text(
@@ -525,7 +495,6 @@ class _TimetablePageState extends State<TimetablePage> {
               maxLines: null,
             ),
           ],
-          // 教师信息 - 可选显示
           if (course.teacher.isNotEmpty) ...[
             const SizedBox(height: 2),
             Text(
@@ -538,7 +507,6 @@ class _TimetablePageState extends State<TimetablePage> {
               maxLines: null,
             ),
           ],
-          // 节次信息
           if (course.startSection != course.endSection) ...[
             const SizedBox(height: 2),
             Text(
@@ -578,80 +546,6 @@ class _TimetablePageState extends State<TimetablePage> {
       ),
     );
   }
-  
-
-  // 构建课程单元格
-  Widget _buildCourseCell(MergedTimetableEntry course) {
-    final colors = _getCourseColors(course.colorHash);
-    
-    return Container(
-      margin: const EdgeInsets.all(0.5), // 减少边距
-      padding: const EdgeInsets.all(6), // 适当增加内边距
-      decoration: BoxDecoration(
-        color: colors['background'],
-        border: Border.all(color: colors['border']!, width: 0.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min, // 使用最小尺寸
-        children: [
-          // 课程名称 - 主要信息
-          Text(
-            course.courseName,
-            style: TextStyle(
-              color: colors['text'],
-              fontWeight: FontWeight.w600,
-              fontSize: 12, // 稍微增大字体
-              height: 1.2, // 行高
-            ),
-            maxLines: null, // 允许多行显示
-            overflow: TextOverflow.visible, // 可见溢出
-          ),
-          // 地点信息 - 次要信息
-          if (course.location.isNotEmpty) ...[
-            const SizedBox(height: 3),
-            Text(
-              compactLocation(course.location),
-              style: TextStyle(
-                color: colors['text']!.withOpacity(0.8),
-                fontSize: 10,
-                height: 1.1,
-              ),
-              maxLines: null, // 允许多行显示
-              overflow: TextOverflow.visible,
-            ),
-          ],
-          // 教师信息 - 可选显示
-          if (course.teacher.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            Text(
-              course.teacher,
-              style: TextStyle(
-                color: colors['text']!.withOpacity(0.7),
-                fontSize: 9,
-                height: 1.0,
-              ),
-              maxLines: null, // 允许多行显示
-              overflow: TextOverflow.visible,
-            ),
-          ],
-          // 节次信息
-          if (course.startSection != course.endSection) ...[
-            const SizedBox(height: 2),
-            Text(
-              '第${course.startSection}-${course.endSection}节',
-              style: TextStyle(
-                color: colors['text']!.withOpacity(0.6),
-                fontSize: 8,
-                height: 1.0,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 
   // 获取小节时间范围
   String _getSectionTimeRange(int section) {
@@ -685,51 +579,19 @@ class _TimetablePageState extends State<TimetablePage> {
     return colors[hash.abs() % colors.length];
   }
 
-  // 构建错误信息
-  Widget _buildErrorMessage() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.red[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.red[200]!),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.error_outline, color: Colors.red[600], size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              _error!,
-              style: TextStyle(color: Colors.red[600]),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-
-
   /// 根据当前日期计算本周周一日期
   DateTime _calcMonday() {
     final start = DateTime.tryParse(_dateCtrl.text.trim()) ?? DateTime.now();
-    final weekday = start.weekday; // 1=Mon
+    final weekday = start.weekday;
     return start.subtract(Duration(days: weekday - 1));
   }
-
-
 
   /// 周几名（1..7）
   String _weekdayName(int i) {
     const names = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
     return names[i - 1];
   }
-
-
 }
-
 
 
 class _WeekPickerDialog extends StatefulWidget {
@@ -766,5 +628,3 @@ class _WeekPickerDialogState extends State<_WeekPickerDialog> {
     );
   }
 }
-
-
