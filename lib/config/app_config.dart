@@ -10,7 +10,7 @@ enum AppEnvironment {
 /// 网络环境配置
 enum NetworkEnvironment {
   intranet('校园网环境', 'http://10.110.225.76/jsxsd'),
-  internet('外网环境', 'http://jw.llyup.top/jsxsd');
+  internet('外网环境', 'http://222.187.129.200:51234/jsxsd');
 
   const NetworkEnvironment(this.displayName, this.baseUrl);
   
