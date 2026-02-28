@@ -16,7 +16,7 @@ class AuthApi {
 
   Future<Uint8List> fetchCaptcha() async {
     final response = await dio.get(
-      '/jsxsd/verifycode.servlet',
+      '/verifycode.servlet',
       options: Options(
         responseType: ResponseType.bytes,
         headers: {
@@ -42,7 +42,7 @@ class AuthApi {
       'encoded': encoded,
     };
     final response = await dio.post(
-      '/jsxsd/xk/LoginToXk',
+      '/xk/LoginToXk',
       queryParameters: params,
       options: Options(
         responseType: ResponseType.bytes,
@@ -61,7 +61,7 @@ class AuthApi {
   Future<void> logout() async {
     try {
       await dio.post(
-        '/jsxsd/xk/LoginToXk',
+        '/xk/LoginToXk',
         queryParameters: {'method': 'exit'},
         options: Options(
           headers: {'Referer': '$baseUrl/'},

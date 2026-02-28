@@ -14,7 +14,7 @@ class SystemApi {
   Future<Map<String, String>> fetchProfileInfo() async {
     try {
       final res = await dio.get(
-        '/jsxsd/framework/xsMainV.htmlx',
+        '/framework/xsMainV.htmlx',
         options: ResponseHelper.createHtmlRequestOptions(baseUrl),
       );
       final html = ResponseHelper.decodeHtmlResponse(res);
@@ -38,12 +38,12 @@ class SystemApi {
       }
     }
 
-    var terms = await tryGet('/jsxsd/kscj/cjcx_query');
+    var terms = await tryGet('/kscj/cjcx_query');
     if (terms.isEmpty) {
-      terms = await tryGet('/jsxsd/kscj/cjcx_list');
+      terms = await tryGet('/kscj/cjcx_list');
     }
     if (terms.isEmpty) {
-      terms = await tryGet('/jsxsd/kbcx/kbxx_xzb');
+      terms = await tryGet('/kbcx/kbxx_xzb');
     }
     int termKey(String t) {
       final m = RegExp(r'^(\d{4})-\d{4}-(\d)').firstMatch(t);

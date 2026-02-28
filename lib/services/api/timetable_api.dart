@@ -20,7 +20,7 @@ class TimetableApi {
     bool showWeekend = false,
   }) async {
     final response = await dio.get(
-      '/jsxsd/framework/mainV_index_loadkb.htmlx',
+      '/framework/mainV_index_loadkb.htmlx',
       queryParameters: {
         'rq': date,
         'sjmsValue': timeMode,
@@ -64,7 +64,7 @@ class TimetableApi {
       'jc2': sectionEnd,
     });
     final response = await dio.post(
-      '/jsxsd/kbcx/kbxx_xzb_ifr',
+      '/kbcx/kbxx_xzb_ifr',
       data: form,
       options: ResponseHelper.createFormRequestOptions(baseUrl),
     );
@@ -77,7 +77,7 @@ class TimetableApi {
     int maxRow = 10,
   }) async {
     final response = await dio.post(
-      '/jsxsd/kbcx/querySkbj',
+      '/kbcx/querySkbj',
       data: FormData.fromMap({'skbj': keyword, 'maxRow': maxRow.toString()}),
       options: Options(
         headers: {
