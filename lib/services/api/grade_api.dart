@@ -29,7 +29,7 @@ class GradeApi {
       'mold': mold,
     });
     final response = await dio.post(
-      '/kscj/cjcx_list',
+      '/jsxsd/kscj/cjcx_list',
       data: form,
       options: ResponseHelper.createFormRequestOptions(baseUrl),
     );
@@ -54,7 +54,7 @@ class GradeApi {
       'mold': mold,
     });
     final response = await dio.post(
-      '/kscj/cjcx_list',
+      '/jsxsd/kscj/cjcx_list',
       data: form,
       options: ResponseHelper.createFormRequestOptions(baseUrl),
     );
@@ -64,7 +64,7 @@ class GradeApi {
 
   Future<List<ExamLevelEntry>> fetchExamLevel() async {
     final response = await dio.get(
-      '/kscj/djkscj_list',
+      '/jsxsd/kscj/djkscj_list',
       options: ResponseHelper.createHtmlRequestOptions(baseUrl),
     );
     final html = ResponseHelper.decodeAndValidateHtml(response);
