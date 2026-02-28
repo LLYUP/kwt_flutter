@@ -65,20 +65,6 @@ class KwtClient {
   /// 从多处页面提取可用学期选项
   Future<List<String>> fetchTermOptions() => _systemApi.fetchTermOptions();
 
-  /// 拉取个人课表（原始二维表形式）
-  Future<List<List<String>>> fetchPersonalTimetable({
-    required String date,
-    required String timeMode,
-    required String termId,
-    bool showWeekend = false,
-  }) {
-    return _timetableApi.fetchPersonalTimetable(
-      date: date,
-      timeMode: timeMode,
-      termId: termId,
-      showWeekend: showWeekend,
-    );
-  }
 
   /// 拉取个人课表（结构化实体）
   Future<List<TimetableEntry>> fetchPersonalTimetableStructured({

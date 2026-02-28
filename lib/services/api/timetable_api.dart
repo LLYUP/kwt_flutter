@@ -12,25 +12,6 @@ class TimetableApi {
   String get baseUrl => _client.baseUrl;
   Dio get dio => _client.dio;
 
-  Future<List<List<String>>> fetchPersonalTimetable({
-    required String date,
-    required String timeMode,
-    required String termId,
-    bool showWeekend = false,
-  }) async {
-    final response = await dio.get(
-      '/framework/mainV_index_loadkb.htmlx',
-      queryParameters: {
-        'rq': date,
-        'sjmsValue': timeMode,
-        'xnxqid': termId,
-        'xswk': showWeekend.toString(),
-      },
-      options: ResponseHelper.createHtmlRequestOptions(baseUrl),
-    );
-    final html = ResponseHelper.decodeHtmlResponse(response);
-    return KwtParser.extractTableRows(html);
-  }
 
   Future<List<TimetableEntry>> fetchPersonalTimetableStructured({
     required String date,
