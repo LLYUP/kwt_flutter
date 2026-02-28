@@ -27,9 +27,10 @@ class DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final defaultIconColor = iconColor ?? Colors.grey[600];
+    final cs = Theme.of(context).colorScheme;
+    final defaultIconColor = iconColor ?? cs.onSurfaceVariant;
     final defaultLabelStyle = labelStyle ?? TextStyle(
-      color: Colors.grey[600],
+      color: cs.onSurfaceVariant,
       fontWeight: FontWeight.w500,
     );
     final defaultValueStyle = valueStyle ?? const TextStyle(

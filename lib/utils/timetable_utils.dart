@@ -2,7 +2,7 @@ import 'package:kwt_flutter/models/models.dart';
 
 // 提取开始小节号
 int extractStartSection(TimetableEntry entry) {
-  // 优先从sectionText中提取
+  // 优先从sectionText中提取第一个数字
   if (entry.sectionText.isNotEmpty) {
     final match = RegExp(r'(\d{1,2})').firstMatch(entry.sectionText);
     if (match != null) {
@@ -22,17 +22,17 @@ int extractStartSection(TimetableEntry entry) {
 }
 
 // 提取结束小节号
+// 支持多种格式: "01~02小节", "06~07~08小节", "06~07~08~09小节"
 int extractEndSection(TimetableEntry entry) {
-  // 优先从sectionText中提取
   if (entry.sectionText.isNotEmpty) {
-    final match = RegExp(r'(\d{1,2})[-~至](\d{1,2})').firstMatch(entry.sectionText);
-    if (match != null) {
-      return int.tryParse(match.group(2)!) ?? 0;
+    // 找到 sectionText 中所有数字，取最后一个
+    final allNumbers = RegExp(r'\d{1,2}').allMatches(entry.sectionText).toList();
+    if (allNumbers.length >= 2) {
+      return int.tryParse(allNumbers.last.group(0)!) ?? 0;
     }
     // 单节次情况
-    final singleMatch = RegExp(r'^(\d{1,2})节?$').firstMatch(entry.sectionText);
-    if (singleMatch != null) {
-      return int.tryParse(singleMatch.group(1)!) ?? 0;
+    if (allNumbers.length == 1) {
+      return int.tryParse(allNumbers.first.group(0)!) ?? 0;
     }
   }
   

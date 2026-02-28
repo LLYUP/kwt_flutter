@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:kwt_flutter/pages/features_page.dart';
 import 'package:kwt_flutter/presentation/profile/pages/profile_page.dart';
 import 'package:kwt_flutter/pages/timetable_page.dart';
@@ -38,8 +39,8 @@ class _TabScaffoldState extends State<TabScaffold> {
             ],
           ),
         );
-        if (shouldPop == true && context.mounted) {
-          Navigator.of(context).pop();
+        if (shouldPop == true) {
+          SystemNavigator.pop();
         }
       },
       child: Scaffold(

@@ -163,6 +163,7 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
   @override
   /// 表格整体布局：顶部搜索/筛选区，中间表头+行列表，底部分页
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Column(
       children: [
         // 搜索和筛选区域
@@ -171,11 +172,11 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
             margin: const EdgeInsets.only(bottom: 16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cs.surface,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
+                  color: cs.shadow.withValues(alpha: 0.05),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -188,13 +189,13 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.grey[50],
+                        color: cs.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey[200]!),
+                        border: Border.all(color: cs.outlineVariant),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.search, color: Colors.grey[600], size: 20),
+                          Icon(Icons.search, color: cs.onSurfaceVariant, size: 20),
                           const SizedBox(width: 12),
                           Expanded(
                             child: TextField(
@@ -202,7 +203,7 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
                               decoration: InputDecoration(
                                 hintText: widget.searchHint,
                                 border: InputBorder.none,
-                                hintStyle: TextStyle(color: Colors.grey[500]),
+                                hintStyle: TextStyle(color: cs.onSurfaceVariant),
                               ),
                             ),
                           ),
@@ -212,7 +213,7 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
                                 _searchController.clear();
                                 _filterData();
                               },
-                              icon: Icon(Icons.clear, color: Colors.grey[600], size: 18),
+                              icon: Icon(Icons.clear, color: cs.onSurfaceVariant, size: 18),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                             ),
@@ -226,9 +227,9 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: Colors.grey[50],
+                      color: cs.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[200]!),
+                      border: Border.all(color: cs.outlineVariant),
                     ),
                     child: DropdownButton<String?>(
                       value: _selectedFilter, // 兼容旧用法
@@ -255,11 +256,11 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cs.surface,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
+                  color: cs.shadow.withValues(alpha: 0.05),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -270,7 +271,7 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
                 // 表头
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.grey[50],
+                    color: cs.surfaceContainerHighest,
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(12),
                       topRight: Radius.circular(12),
@@ -304,7 +305,7 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
                             column.label,
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              color: Colors.grey[700],
+                              color: cs.onSurfaceVariant,
                             ),
                             textAlign: column.textAlign ?? TextAlign.start,
                           ),
@@ -317,7 +318,7 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
                             '操作',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              color: Colors.grey[700],
+                              color: cs.onSurfaceVariant,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -329,13 +330,13 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
                 // 表格行
                 Expanded(
                   child: widget.loading
-                      ? const Center(
+                      ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text('加载中...', style: TextStyle(color: Colors.grey)),
+                              const CircularProgressIndicator(),
+                              const SizedBox(height: 16),
+                              Text('加载中...', style: TextStyle(color: cs.onSurfaceVariant)),
                             ],
                           ),
                         )
@@ -350,9 +351,9 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
                                 
                                 return Container(
                                   decoration: BoxDecoration(
-                                    color: isSelected ? Colors.blue[50] : null,
+                                    color: isSelected ? cs.primaryContainer : null,
                                     border: Border(
-                                      bottom: BorderSide(color: Colors.grey[200]!),
+                                      bottom: BorderSide(color: cs.outlineVariant),
                                     ),
                                   ),
                                   child: InkWell(
@@ -403,7 +404,7 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.grey[50],
+                      color: cs.surfaceContainerHighest,
                       borderRadius: const BorderRadius.only(
                         bottomLeft: Radius.circular(12),
                         bottomRight: Radius.circular(12),
@@ -414,7 +415,7 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
                       children: [
                         Text(
                           '共 ${_filteredData.length} 条记录',
-                          style: TextStyle(color: Colors.grey[600]),
+                          style: TextStyle(color: cs.onSurfaceVariant),
                         ),
                         Row(
                           children: [
@@ -426,7 +427,7 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
                             ),
                             Text(
                               '${_currentPage + 1} / $_totalPages',
-                              style: TextStyle(color: Colors.grey[700]),
+                              style: TextStyle(color: cs.onSurfaceVariant),
                             ),
                             IconButton(
                               onPressed: _currentPage < _totalPages - 1
@@ -448,6 +449,7 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
   }
 
   Widget _buildEmptyState() {
+    final cs = Theme.of(context).colorScheme;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -455,14 +457,14 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
           Icon(
             Icons.search_off,
             size: 64,
-            color: Colors.grey[400],
+            color: cs.onSurfaceVariant,
           ),
           const SizedBox(height: 16),
           Text(
             _searchController.text.isNotEmpty ? '未找到相关数据' : widget.emptyMessage,
             style: TextStyle(
               fontSize: 18,
-              color: Colors.grey[600],
+              color: cs.onSurfaceVariant,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -471,7 +473,7 @@ class _ModernTableState<T> extends State<ModernTable<T>> {
             Text(
               '尝试使用其他关键词搜索',
               style: TextStyle(
-                color: Colors.grey[500],
+                color: cs.onSurfaceVariant,
                 fontSize: 14,
               ),
             ),

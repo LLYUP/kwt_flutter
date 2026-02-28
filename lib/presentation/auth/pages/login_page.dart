@@ -102,9 +102,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     child: DropdownButtonFormField<String>(
                       initialValue: state.selectedNetworkEnvironment,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: '网络环境',
-                        prefixIcon: Icon(Icons.wifi, color: Colors.grey),
+                        prefixIcon: Icon(Icons.wifi, color: Theme.of(context).colorScheme.onSurfaceVariant),
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                       ),
@@ -233,23 +233,26 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   
                   // Error Box
                   if (state.error != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red[50],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red[200]!),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.error_outline, color: Colors.red[600], size: 20),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(state.error!, style: TextStyle(color: Colors.red[600])),
-                          ),
-                        ],
-                      ),
-                    ),
+                    Builder(builder: (context) {
+                      final cs = Theme.of(context).colorScheme;
+                      return Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: cs.errorContainer,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: cs.error.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.error_outline, color: cs.error, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(state.error!, style: TextStyle(color: cs.onErrorContainer)),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                     const SizedBox(height: 16),
                   ],
                   

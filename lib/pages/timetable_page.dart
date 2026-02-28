@@ -1,4 +1,4 @@
-// 个人课表页面：按周展示个人课表，支持自动推算周次、选择周次与刷新
+// 个人课表页面：按周展示个人课表，按教务系统5大节原样展示
 // 对齐 schedule-getx 的 CurriculumComponent 风格
 import 'package:flutter/material.dart';
 import 'package:kwt_flutter/models/models.dart';
@@ -24,7 +24,7 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
   final _timeModeCtrl = TextEditingController();
   bool _busy = false;
   String? _error;
-  List<MergedTimetableEntry> _mergedTimetable = const [];
+  List<TimetableEntry> _timetable = const [];
   int _weekNo = 1;
 
   @override
@@ -87,9 +87,7 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
         ),
       );
       if (data != null) {
-        setState(() {
-          _mergedTimetable = mergeContinuousCourses(data);
-        });
+        setState(() => _timetable = data);
       }
     } catch (e) {
       setState(() => _error = '加载失败: $e');
@@ -112,13 +110,9 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
                 ? const AppLoadingWidget()
                 : CustomScrollView(
                     slivers: [
-                      // 周次大标题（对齐 schedule-getx）
                       _weekTitleSliver(days, scheme),
-                      // 星期日期行
                       _weekdayHeaderSliver(days, scheme),
-                      // 课表网格
-                      _timetableGridSliver(days, scheme),
-                      // 底部间距
+                      _timetableGridSliver(scheme),
                       const SliverToBoxAdapter(child: SizedBox(height: 32)),
                     ],
                   ),
@@ -126,7 +120,7 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
     );
   }
 
-  /// 周次标题 sliver
+  /// 周次标题
   Widget _weekTitleSliver(List<DateTime> days, ColorScheme scheme) {
     return SliverToBoxAdapter(
       child: Padding(
@@ -170,7 +164,7 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
     );
   }
 
-  /// 星期日期表头 sliver（对齐 schedule-getx 的 _getDateWeek）
+  /// 星期日期表头
   Widget _weekdayHeaderSliver(List<DateTime> days, ColorScheme scheme) {
     final today = DateTime.now();
     return SliverToBoxAdapter(
@@ -178,7 +172,6 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: Row(
           children: [
-            // 空占位（与节次列对齐）
             const SizedBox(width: 36),
             const SizedBox(width: 6),
             for (int i = 0; i < 7; i++) ...[
@@ -221,45 +214,45 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
     );
   }
 
-  /// 课表网格（5个节次段，每段高度自适应, 对齐 schedule-getx 的 _getTimeAndCourseList）
-  Widget _timetableGridSliver(List<DateTime> days, ColorScheme scheme) {
-    // 构建按节次段+星期的课程映射
-    final grid = _buildSectionDayGrid();
+  /// 课表网格：按教务系统原始5个大节展示
+  Widget _timetableGridSliver(ColorScheme scheme) {
+    // 按大节号(sectionIndex 1-5) + 星期(dayOfWeek 1-7) 组织
+    final grid = _buildDajieGrid();
 
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Column(
           children: [
-            for (int section = 0; section < 5; section++) ...[
-              if (section == 2) _breakLabel('午休', scheme),
-              if (section == 4) _breakLabel('晚休', scheme),
-              _sectionRow(section, grid, scheme),
-            ],
+            // 第一大节 (01-02节)
+            _sectionRow(0, '一', grid, scheme),
+            // 第二大节 (03-05节)
+            _sectionRow(1, '二', grid, scheme),
+            // 午休
+            _breakLabel('午休', scheme),
+            // 第三大节 (06-07节)
+            _sectionRow(2, '三', grid, scheme),
+            // 第四大节 (08-09节)
+            _sectionRow(3, '四', grid, scheme),
+            // 晚休
+            _breakLabel('晚休', scheme),
+            // 第五大节 (10-12节)
+            _sectionRow(4, '五', grid, scheme),
           ],
         ),
       ),
     );
   }
 
-  /// 一个节次段（对齐 schedule-getx 的一行 8 个格子：节次 + 7天）
-  Widget _sectionRow(int sectionIdx, List<List<List<MergedTimetableEntry>>> grid, ColorScheme scheme) {
-    const sectionLabels = ['一', '二', '三', '四', '五'];
-    const sectionTimes = [
-      '08:15\n08:55',
-      '09:00\n09:40',
-      '09:55\n10:35\n10:40\n11:20\n11:25\n12:05',
-      '13:50\n14:30\n14:35\n15:15\n15:30\n16:10\n16:15\n16:55',
-      '18:30\n19:10\n19:15\n19:55\n20:00\n20:40',
-    ];
-
+  /// 一个大节行
+  Widget _sectionRow(int idx, String label, List<List<List<TimetableEntry>>> grid, ColorScheme scheme) {
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 节次列
+            // 大节号
             SizedBox(
               width: 36,
               child: Container(
@@ -270,7 +263,7 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text(
-                  sectionLabels[sectionIdx],
+                  label,
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -280,11 +273,11 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
               ),
             ),
             const SizedBox(width: 6),
-            // 7 天的课程格子
+            // 7 天
             for (int day = 0; day < 7; day++) ...[
               if (day > 0) const SizedBox(width: 6),
               Expanded(
-                child: _courseCell(grid[sectionIdx][day], scheme),
+                child: _courseCell(grid[idx][day], scheme),
               ),
             ],
           ],
@@ -293,18 +286,16 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
     );
   }
 
-  /// 课程格子（对齐 schedule-getx 的 _getCourseList）
-  Widget _courseCell(List<MergedTimetableEntry> courses, ColorScheme scheme) {
-    if (courses.isEmpty) {
-      return Container(
-        constraints: const BoxConstraints(minHeight: 72),
-      );
+  /// 课程格子
+  Widget _courseCell(List<TimetableEntry> entries, ColorScheme scheme) {
+    if (entries.isEmpty) {
+      return Container(constraints: const BoxConstraints(minHeight: 72));
     }
-    // 取第一个课程显示
-    final course = courses.first;
-    final colors = _getCourseColors(course.colorHash, scheme);
+    final entry = entries.first;
+    final colorIdx = entry.courseName.hashCode;
+    final colors = _getCourseColors(colorIdx, scheme);
     return GestureDetector(
-      onTap: () => _showCourseDetail(course),
+      onTap: () => _showCourseDetail(entry),
       child: Container(
         constraints: const BoxConstraints(minHeight: 72),
         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
@@ -316,9 +307,8 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           mainAxisSize: MainAxisSize.max,
           children: [
-            // 课程名称
             Text(
-              course.courseName,
+              entry.courseName,
               maxLines: 4,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
@@ -329,11 +319,10 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
                 height: 1.2,
               ),
             ),
-            const SizedBox(height: 4),
-            // 课程地点
-            if (course.location.isNotEmpty)
+            const SizedBox(height: 2),
+            if (entry.location.isNotEmpty)
               Text(
-                compactLocation(course.location),
+                compactLocation(entry.location),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
@@ -343,10 +332,9 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
                   height: 1.2,
                 ),
               ),
-            // 教师
-            if (course.teacher.isNotEmpty)
+            if (entry.teacher.isNotEmpty)
               Text(
-                course.teacher,
+                entry.teacher,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
@@ -384,34 +372,23 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
     );
   }
 
-  /// 构建 [节次段][星期] 的课程映射（5段 × 7天）
-  List<List<List<MergedTimetableEntry>>> _buildSectionDayGrid() {
-    // 5个节次段: 1-2节(一), 3-4节(二), 5节(三), 6-8节(四), 9-12节(五)
-    // 简化映射：section 1-2→0, 3-5→1, 6→2(午休后第一段), 6-9→3, 10-12→4
-    final grid = List.generate(5, (_) => List.generate(7, (_) => <MergedTimetableEntry>[]));
+  /// 按大节号(sectionIndex 1-5) + 星期(dayOfWeek 1-7) 构建网格
+  /// 直接使用解析器返回的 sectionIndex（对应教务系统的5个大节行）
+  List<List<List<TimetableEntry>>> _buildDajieGrid() {
+    // 5大节 × 7天
+    final grid = List.generate(5, (_) => List.generate(7, (_) => <TimetableEntry>[]));
 
-    for (final course in _mergedTimetable) {
-      final dayIdx = course.dayOfWeek - 1;
-      if (dayIdx < 0 || dayIdx > 6) continue;
-      final sectionIdx = _sectionToIndex(course.startSection);
-      if (sectionIdx >= 0 && sectionIdx < 5) {
-        grid[sectionIdx][dayIdx].add(course);
+    for (final entry in _timetable) {
+      final dajie = entry.sectionIndex; // 1-5
+      final day = entry.dayOfWeek;      // 1-7
+      if (dajie >= 1 && dajie <= 5 && day >= 1 && day <= 7) {
+        grid[dajie - 1][day - 1].add(entry);
       }
     }
     return grid;
   }
 
-  /// 将节次号映射到5段索引
-  int _sectionToIndex(int section) {
-    if (section >= 1 && section <= 2) return 0;
-    if (section >= 3 && section <= 5) return 1;
-    if (section >= 6 && section <= 7) return 2;
-    if (section >= 8 && section <= 9) return 3;
-    if (section >= 10 && section <= 12) return 4;
-    return -1;
-  }
-
-  /// 获取课程颜色（使用 colorScheme 容器色）
+  /// 获取课程颜色
   Map<String, Color> _getCourseColors(int hash, ColorScheme scheme) {
     final colors = [
       {'background': scheme.tertiaryContainer.withValues(alpha: 0.8), 'text': scheme.onTertiaryContainer},
@@ -425,7 +402,7 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
   }
 
   /// 课程详情弹窗
-  void _showCourseDetail(MergedTimetableEntry course) {
+  void _showCourseDetail(TimetableEntry entry) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -434,10 +411,11 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _detailLine('课程名称', course.courseName),
-            _detailLine('教师', course.teacher),
-            _detailLine('时间', '第${course.startSection}-${course.endSection}节'),
-            _detailLine('教室', course.location),
+            _detailLine('课程名称', entry.courseName),
+            _detailLine('教师', entry.teacher),
+            _detailLine('节次', entry.sectionText),
+            _detailLine('教室', entry.location),
+            if (entry.credits.isNotEmpty) _detailLine('学分', entry.credits),
           ],
         ),
         actions: [
@@ -457,7 +435,6 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
     );
   }
 
-  /// 选择周次
   Future<void> _pickWeek() async {
     final no = await showDialog<int>(
       context: context,

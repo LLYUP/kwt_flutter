@@ -41,7 +41,7 @@ class CourseEntryTile extends StatelessWidget {
             Text(
               compactLocation(entry.location),
               style: textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: compact ? 10 : 11,
               ),
               textAlign: TextAlign.center,
@@ -84,7 +84,7 @@ class CourseDetailDialogWidget extends StatelessWidget {
     return AlertDialog(
       title: Row(
         children: [
-          Icon(Icons.class_, color: Colors.blue[600], size: 24),
+          Icon(Icons.class_, color: Theme.of(context).colorScheme.primary, size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
