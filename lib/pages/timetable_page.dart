@@ -1,31 +1,31 @@
 // 个人课表页面：按周展示个人课表，支持自动推算周次、选择周次与刷新
+// 对齐 schedule-getx 的 CurriculumComponent 风格
 import 'package:flutter/material.dart';
 import 'package:kwt_flutter/models/models.dart';
-import 'package:kwt_flutter/services/session_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kwt_flutter/services/session_service.dart';
 import 'package:kwt_flutter/services/settings.dart';
 import 'package:kwt_flutter/utils/timetable_utils.dart';
 import 'package:kwt_flutter/common/widget/common_widgets.dart';
 import 'package:kwt_flutter/config/app_config.dart';
 
 /// 个人课表页
-class TimetablePage extends StatefulWidget {
+class TimetablePage extends ConsumerStatefulWidget {
   const TimetablePage({super.key});
 
   @override
-  State<TimetablePage> createState() => _TimetablePageState();
+  ConsumerState<TimetablePage> createState() => _TimetablePageState();
 }
 
-class _TimetablePageState extends State<TimetablePage> {
+class _TimetablePageState extends ConsumerState<TimetablePage> {
   final _settings = SettingsService();
   final _termCtrl = TextEditingController();
   final _dateCtrl = TextEditingController();
   final _timeModeCtrl = TextEditingController();
   bool _busy = false;
   String? _error;
-  List<TimetableEntry> _timetable = const [];
   List<MergedTimetableEntry> _mergedTimetable = const [];
   int _weekNo = 1;
-  bool _initialized = false;
 
   @override
   void initState() {
@@ -33,13 +33,11 @@ class _TimetablePageState extends State<TimetablePage> {
     _initFromSettings();
   }
 
-  /// 从设置加载默认学期与开学日期，并自动计算周次与日期
   Future<void> _initFromSettings() async {
     _termCtrl.text = await _settings.getTerm() ?? AppConfig.defaultTerm;
     final savedStart = await _settings.getStartDate() ?? '';
     _timeModeCtrl.text = AppConfig.defaultTimeMode;
 
-    // 依据开始日期与系统时间自动设置周次与日期
     if (savedStart.isNotEmpty) {
       final autoWeek = _computeWeekFromStart(savedStart);
       _weekNo = autoWeek;
@@ -53,7 +51,6 @@ class _TimetablePageState extends State<TimetablePage> {
       _weekNo = 1;
     }
 
-    setState(() => _initialized = true);
     await _load();
   }
 
@@ -65,7 +62,6 @@ class _TimetablePageState extends State<TimetablePage> {
     super.dispose();
   }
 
-  /// 根据开学日期计算当前周次
   int _computeWeekFromStart(String startDate) {
     final start = DateTime.tryParse(startDate);
     if (start == null) return 1;
@@ -76,14 +72,13 @@ class _TimetablePageState extends State<TimetablePage> {
     return week < 1 ? 1 : week;
   }
 
-  /// 拉取并渲染个人课表
   Future<void> _load() async {
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      final session = SessionProvider.read(context);
+      final session = ref.read(sessionServiceProvider);
       final data = await session.safeCall(context, () =>
         session.client.fetchPersonalTimetableStructured(
           date: _dateCtrl.text.trim(),
@@ -93,7 +88,6 @@ class _TimetablePageState extends State<TimetablePage> {
       );
       if (data != null) {
         setState(() {
-          _timetable = data;
           _mergedTimetable = mergeContinuousCourses(data);
         });
       }
@@ -108,485 +102,384 @@ class _TimetablePageState extends State<TimetablePage> {
   Widget build(BuildContext context) {
     final monday = _calcMonday();
     final days = List.generate(7, (i) => monday.add(Duration(days: i)));
-    
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       body: SafeArea(
+        child: _error != null
+            ? AppErrorWidget(message: _error!, onRetry: _load)
+            : _busy
+                ? const AppLoadingWidget()
+                : CustomScrollView(
+                    slivers: [
+                      // 周次大标题（对齐 schedule-getx）
+                      _weekTitleSliver(days, scheme),
+                      // 星期日期行
+                      _weekdayHeaderSliver(days, scheme),
+                      // 课表网格
+                      _timetableGridSliver(days, scheme),
+                      // 底部间距
+                      const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                    ],
+                  ),
+      ),
+    );
+  }
+
+  /// 周次标题 sliver
+  Widget _weekTitleSliver(List<DateTime> days, ColorScheme scheme) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: _busy ? null : _pickWeek,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Text(
+                  '第$_weekNo周',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: scheme.onSurface,
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 10, top: 2),
+              child: Text(
+                '${days.first.year}年${days.first.month}月',
+                style: TextStyle(fontSize: 15, color: scheme.onSurfaceVariant),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton.filledTonal(
+                onPressed: _busy ? null : _load,
+                icon: const Icon(Icons.refresh, size: 20),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 星期日期表头 sliver（对齐 schedule-getx 的 _getDateWeek）
+  Widget _weekdayHeaderSliver(List<DateTime> days, ColorScheme scheme) {
+    final today = DateTime.now();
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: Row(
+          children: [
+            // 空占位（与节次列对齐）
+            const SizedBox(width: 36),
+            const SizedBox(width: 6),
+            for (int i = 0; i < 7; i++) ...[
+              if (i > 0) const SizedBox(width: 6),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: (days[i].year == today.year &&
+                            days[i].month == today.month &&
+                            days[i].day == today.day)
+                        ? scheme.primary.withValues(alpha: 0.15)
+                        : null,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _weekdayName(i + 1),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${days[i].month}.${days[i].day}',
+                        style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 课表网格（5个节次段，每段高度自适应, 对齐 schedule-getx 的 _getTimeAndCourseList）
+  Widget _timetableGridSliver(List<DateTime> days, ColorScheme scheme) {
+    // 构建按节次段+星期的课程映射
+    final grid = _buildSectionDayGrid();
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Column(
           children: [
-            // 顶部周次信息
-            _buildWeekHeader(days),
-            
-            // 错误信息
-            if (_error != null) AppErrorWidget(message: _error!),
-            
-            // 课表内容
-            Expanded(
-              child: _busy
-                  ? const AppLoadingWidget()
-                  : _buildTimetableContent(days),
-            ),
+            for (int section = 0; section < 5; section++) ...[
+              if (section == 2) _breakLabel('午休', scheme),
+              if (section == 4) _breakLabel('晚休', scheme),
+              _sectionRow(section, grid, scheme),
+            ],
           ],
         ),
       ),
     );
   }
 
-  // 构建顶部周次信息
-  Widget _buildWeekHeader(List<DateTime> days) {
+  /// 一个节次段（对齐 schedule-getx 的一行 8 个格子：节次 + 7天）
+  Widget _sectionRow(int sectionIdx, List<List<List<MergedTimetableEntry>>> grid, ColorScheme scheme) {
+    const sectionLabels = ['一', '二', '三', '四', '五'];
+    const sectionTimes = [
+      '08:15\n08:55',
+      '09:00\n09:40',
+      '09:55\n10:35\n10:40\n11:20\n11:25\n12:05',
+      '13:50\n14:30\n14:35\n15:15\n15:30\n16:10\n16:15\n16:55',
+      '18:30\n19:10\n19:15\n19:55\n20:00\n20:40',
+    ];
+
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white, // 白色背景与表头保持一致
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.calendar_today, color: Colors.blue[600], size: 20),
-              const SizedBox(width: 8),
-              Text(
-                '第$_weekNo周',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[800],
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '${days.first.year}/${days.first.month}月',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _busy
-                      ? null
-                      : () async {
-                          final no = await showDialog<int>(
-                            context: context,
-                            builder: (_) => _WeekPickerDialog(initial: _weekNo),
-                          );
-                          if (no != null) {
-                            setState(() => _weekNo = no);
-                            final start = DateTime.tryParse(await _settings.getStartDate() ?? _dateCtrl.text.trim());
-                            if (start != null) {
-                              final rq = start.add(Duration(days: (no - 1) * 7));
-                              _dateCtrl.text = rq.toIso8601String().substring(0, 10);
-                              _load();
-                            }
-                          }
-                        },
-                  icon: Icon(Icons.date_range, color: Colors.blue[600], size: 18),
-                  label: Text('选择周次', style: TextStyle(color: Colors.blue[600], fontSize: 14)),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    side: BorderSide(color: Colors.blue[600]!, width: 1),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _busy ? null : _load,
-                  icon: const Icon(Icons.refresh, color: Colors.white, size: 18),
-                  label: const Text('刷新', style: TextStyle(color: Colors.white, fontSize: 14)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[600],
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 构建课表内容
-  Widget _buildTimetableContent(List<DateTime> days) {
-    if (_mergedTimetable.isEmpty) {
-      return const AppEmptyWidget(
-        message: '本周暂无课程安排',
-        icon: Icons.event_busy,
-      );
-    }
-
-    // 扁平化设计，不使用卡片容器
-    return Column(
-      children: [
-        // 表头
-        _buildTableHeader(days),
-        // 表体
-        Expanded(
-          child: _buildTableBody(days),
-        ),
-      ],
-    );
-  }
-
-  // 构建表头
-  Widget _buildTableHeader(List<DateTime> days) {
-    return Container(
-      color: Colors.grey[100],
-      child: Row(
-        children: [
-          Container(
-            width: 50,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text(
-              '时间',
-              style: TextStyle(
-                color: Colors.grey[700],
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          for (int i = 0; i < 7; i++)
-            Expanded(
+      margin: const EdgeInsets.only(bottom: 6),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 节次列
+            SizedBox(
+              width: 36,
               child: Container(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  border: Border(
-                    left: BorderSide(color: Colors.grey[300]!),
+                child: Text(
+                  sectionLabels[sectionIdx],
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurfaceVariant,
                   ),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      _weekdayName(i + 1),
-                      style: TextStyle(
-                        color: Colors.grey[700],
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${days[i].month}.${days[i].day}',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ),
-        ],
+            const SizedBox(width: 6),
+            // 7 天的课程格子
+            for (int day = 0; day < 7; day++) ...[
+              if (day > 0) const SizedBox(width: 6),
+              Expanded(
+                child: _courseCell(grid[sectionIdx][day], scheme),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 
-  // 构建表体
-  Widget _buildTableBody(List<DateTime> days) {
-    return SingleChildScrollView(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final containerWidth = constraints.maxWidth;
-          return Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: Stack(
-              children: [
-                // 基础网格
-                _buildBaseGrid(),
-                // 课程覆盖层
-                ..._buildCourseOverlays(containerWidth),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-  
-  // 构建基础网格（只显示边框和时间）
-  Widget _buildBaseGrid() {
-    return Column(
-      children: [
-        // 第1-5节
-        for (int section = 1; section <= 5; section++) 
-          _buildBaseGridRow(section),
-        // 午休分割线
-        _buildBreakLine('午休'),
-        // 第6-9节
-        for (int section = 6; section <= 9; section++) 
-          _buildBaseGridRow(section),
-        // 晚休分割线
-        _buildBreakLine('晚休'),
-        // 第10-12节
-        for (int section = 10; section <= 12; section++) 
-          _buildBaseGridRow(section),
-      ],
-    );
-  }
-  
-  // 构建基础网格行（固定高度）
-  Widget _buildBaseGridRow(int section) {
-    return Container(
-      height: 60,
-      decoration: BoxDecoration(
-        border: Border(
-          top: section == 1 ? BorderSide.none : BorderSide(color: Colors.grey[300]!),
-        ),
-      ),
-      child: Row(
-        children: [
-          // 时间列
-          Container(
-            width: 50,
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              border: Border(
-                right: BorderSide(color: Colors.grey[300]!),
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  section.toString(),
-                  style: TextStyle(
-                    color: Colors.grey[700],
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _getSectionTimeRange(section),
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 8,
-                    height: 1.0,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-          // 课程列（空白区域）
-          for (int day = 1; day <= 7; day++)
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border(
-                    left: day == 1 ? BorderSide.none : BorderSide(color: Colors.grey[300]!),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-  
-  // 构建课程覆盖层
-  List<Widget> _buildCourseOverlays(double containerWidth) {
-    final List<Widget> overlays = [];
-    
-    for (final course in _mergedTimetable) {
-      final dayIndex = course.dayOfWeek - 1;
-      final startSection = course.startSection;
-      final endSection = course.endSection;
-      
-      // 计算位置，考虑分割线的影响
-      final cellWidth = (containerWidth - 50) / 7;
-      final left = 50.0 + cellWidth * dayIndex;
-      
-      // 计算顶部位置和高度，考虑分割线
-      double top = 0;
-      double height = 0;
-      
-      if (startSection <= 5 && endSection <= 5) {
-        top = 60.0 * (startSection - 1);
-        height = 60.0 * (endSection - startSection + 1);
-      } else if (startSection <= 5 && endSection > 5 && endSection <= 9) {
-        top = 60.0 * (startSection - 1);
-        height = 60.0 * (5 - startSection + 1) + 30.0 + 60.0 * (endSection - 6 + 1);
-      } else if (startSection <= 5 && endSection > 9) {
-        top = 60.0 * (startSection - 1);
-        height = 60.0 * (5 - startSection + 1) + 30.0 + 60.0 * 4 + 30.0 + 60.0 * (endSection - 10 + 1);
-      } else if (startSection >= 6 && startSection <= 9 && endSection <= 9) {
-        top = 60.0 * 5 + 30.0 + 60.0 * (startSection - 6);
-        height = 60.0 * (endSection - startSection + 1);
-      } else if (startSection >= 6 && startSection <= 9 && endSection > 9) {
-        top = 60.0 * 5 + 30.0 + 60.0 * (startSection - 6);
-        height = 60.0 * (9 - startSection + 1) + 30.0 + 60.0 * (endSection - 10 + 1);
-      } else {
-        top = 60.0 * 5 + 30.0 + 60.0 * 4 + 30.0 + 60.0 * (startSection - 10);
-        height = 60.0 * (endSection - startSection + 1);
-      }
-      
-      overlays.add(
-        Positioned(
-          left: left,
-          top: top,
-          width: cellWidth,
-          height: height,
-          child: _buildMergedCourseCell(course),
-        ),
+  /// 课程格子（对齐 schedule-getx 的 _getCourseList）
+  Widget _courseCell(List<MergedTimetableEntry> courses, ColorScheme scheme) {
+    if (courses.isEmpty) {
+      return Container(
+        constraints: const BoxConstraints(minHeight: 72),
       );
     }
-    
-    return overlays;
-  }
-  
-  // 构建合并的课程单元格
-  Widget _buildMergedCourseCell(MergedTimetableEntry course) {
-    final colors = _getCourseColors(course.colorHash);
-    
-    return Container(
-      margin: const EdgeInsets.all(0.5),
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: colors['background'],
-        border: Border.all(color: colors['border']!, width: 0.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            course.courseName,
-            style: TextStyle(
-              color: colors['text'],
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-              height: 1.2,
-            ),
-            maxLines: null,
-          ),
-          if (course.location.isNotEmpty) ...[
-            const SizedBox(height: 3),
-            Text(
-              compactLocation(course.location),
-              style: TextStyle(
-                color: colors['text']!.withOpacity(0.8),
-                fontSize: 10,
-                height: 1.1,
-              ),
-              maxLines: null,
-            ),
-          ],
-          if (course.teacher.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            Text(
-              course.teacher,
-              style: TextStyle(
-                color: colors['text']!.withOpacity(0.7),
-                fontSize: 9,
-                height: 1.0,
-              ),
-              maxLines: null,
-            ),
-          ],
-          if (course.startSection != course.endSection) ...[
-            const SizedBox(height: 2),
-            Text(
-              '第${course.startSection}-${course.endSection}节',
-              style: TextStyle(
-                color: colors['text']!.withOpacity(0.6),
-                fontSize: 8,
-                height: 1.0,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // 构建分割线（午休/晚休）
-  Widget _buildBreakLine(String label) {
-    return Container(
-      height: 30,
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        border: Border(
-          top: BorderSide(color: Colors.grey[300]!, width: 1),
-          bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+    // 取第一个课程显示
+    final course = courses.first;
+    final colors = _getCourseColors(course.colorHash, scheme);
+    return GestureDetector(
+      onTap: () => _showCourseDetail(course),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 72),
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        decoration: BoxDecoration(
+          color: colors['background'],
+          borderRadius: BorderRadius.circular(10),
         ),
-      ),
-      child: Center(
-        child: Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey[500],
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            // 课程名称
+            Text(
+              course.courseName,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: colors['text'],
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(height: 4),
+            // 课程地点
+            if (course.location.isNotEmpty)
+              Text(
+                compactLocation(course.location),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 9,
+                  color: colors['text']!.withValues(alpha: 0.7),
+                  height: 1.2,
+                ),
+              ),
+            // 教师
+            if (course.teacher.isNotEmpty)
+              Text(
+                course.teacher,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 9,
+                  color: colors['text']!.withValues(alpha: 0.6),
+                  height: 1.2,
+                ),
+              ),
+          ],
         ),
       ),
     );
   }
 
-  // 获取小节时间范围
-  String _getSectionTimeRange(int section) {
-    const timeRanges = {
-      1: '08:15\n08:55',
-      2: '09:00\n09:40',
-      3: '09:55\n10:35',
-      4: '10:40\n11:20',
-      5: '11:25\n12:05',
-      6: '13:50\n14:30',
-      7: '14:35\n15:15',
-      8: '15:30\n16:10',
-      9: '16:15\n16:55',
-      10: '18:30\n19:10',
-      11: '19:15\n19:55',
-      12: '20:00\n20:40',
-    };
-    return timeRanges[section] ?? '';
+  /// 午休/晚休标签
+  Widget _breakLabel(String label, ColorScheme scheme) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      margin: const EdgeInsets.only(bottom: 6),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 13,
+          color: scheme.onSurfaceVariant,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
   }
 
-  // 获取课程颜色主题
-  Map<String, Color> _getCourseColors(int hash) {
+  /// 构建 [节次段][星期] 的课程映射（5段 × 7天）
+  List<List<List<MergedTimetableEntry>>> _buildSectionDayGrid() {
+    // 5个节次段: 1-2节(一), 3-4节(二), 5节(三), 6-8节(四), 9-12节(五)
+    // 简化映射：section 1-2→0, 3-5→1, 6→2(午休后第一段), 6-9→3, 10-12→4
+    final grid = List.generate(5, (_) => List.generate(7, (_) => <MergedTimetableEntry>[]));
+
+    for (final course in _mergedTimetable) {
+      final dayIdx = course.dayOfWeek - 1;
+      if (dayIdx < 0 || dayIdx > 6) continue;
+      final sectionIdx = _sectionToIndex(course.startSection);
+      if (sectionIdx >= 0 && sectionIdx < 5) {
+        grid[sectionIdx][dayIdx].add(course);
+      }
+    }
+    return grid;
+  }
+
+  /// 将节次号映射到5段索引
+  int _sectionToIndex(int section) {
+    if (section >= 1 && section <= 2) return 0;
+    if (section >= 3 && section <= 5) return 1;
+    if (section >= 6 && section <= 7) return 2;
+    if (section >= 8 && section <= 9) return 3;
+    if (section >= 10 && section <= 12) return 4;
+    return -1;
+  }
+
+  /// 获取课程颜色（使用 colorScheme 容器色）
+  Map<String, Color> _getCourseColors(int hash, ColorScheme scheme) {
     final colors = [
-      {'background': const Color(0xFFE3F2FD), 'border': const Color(0xFF2196F3), 'text': const Color(0xFF1976D2)},
-      {'background': const Color(0xFFF3E5F5), 'border': const Color(0xFF9C27B0), 'text': const Color(0xFF7B1FA2)},
-      {'background': const Color(0xFFE8F5E8), 'border': const Color(0xFF4CAF50), 'text': const Color(0xFF388E3C)},
-      {'background': const Color(0xFFFFF3E0), 'border': const Color(0xFFFF9800), 'text': const Color(0xFFF57C00)},
-      {'background': const Color(0xFFFFEBEE), 'border': const Color(0xFFF44336), 'text': const Color(0xFFD32F2F)},
-      {'background': const Color(0xFFF1F8E9), 'border': const Color(0xFF8BC34A), 'text': const Color(0xFF689F38)},
+      {'background': scheme.tertiaryContainer.withValues(alpha: 0.8), 'text': scheme.onTertiaryContainer},
+      {'background': scheme.primaryContainer.withValues(alpha: 0.8), 'text': scheme.onPrimaryContainer},
+      {'background': scheme.secondaryContainer.withValues(alpha: 0.8), 'text': scheme.onSecondaryContainer},
+      {'background': scheme.errorContainer.withValues(alpha: 0.6), 'text': scheme.onErrorContainer},
+      {'background': scheme.primary.withValues(alpha: 0.15), 'text': scheme.primary},
+      {'background': scheme.tertiary.withValues(alpha: 0.15), 'text': scheme.tertiary},
     ];
     return colors[hash.abs() % colors.length];
   }
 
-  /// 根据当前日期计算本周周一日期
+  /// 课程详情弹窗
+  void _showCourseDetail(MergedTimetableEntry course) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('课程详情'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _detailLine('课程名称', course.courseName),
+            _detailLine('教师', course.teacher),
+            _detailLine('时间', '第${course.startSection}-${course.endSection}节'),
+            _detailLine('教室', course.location),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailLine(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Text('$label：$value'),
+    );
+  }
+
+  /// 选择周次
+  Future<void> _pickWeek() async {
+    final no = await showDialog<int>(
+      context: context,
+      builder: (_) => _WeekPickerDialog(initial: _weekNo),
+    );
+    if (no != null) {
+      setState(() => _weekNo = no);
+      final start = DateTime.tryParse(await _settings.getStartDate() ?? _dateCtrl.text.trim());
+      if (start != null) {
+        final rq = start.add(Duration(days: (no - 1) * 7));
+        _dateCtrl.text = rq.toIso8601String().substring(0, 10);
+        _load();
+      }
+    }
+  }
+
   DateTime _calcMonday() {
     final start = DateTime.tryParse(_dateCtrl.text.trim()) ?? DateTime.now();
     final weekday = start.weekday;
     return start.subtract(Duration(days: weekday - 1));
   }
 
-  /// 周几名（1..7）
   String _weekdayName(int i) {
     const names = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
     return names[i - 1];

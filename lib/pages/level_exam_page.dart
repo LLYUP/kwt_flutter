@@ -1,52 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:kwt_flutter/models/models.dart';
-import 'package:kwt_flutter/services/session_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kwt_flutter/services/session_service.dart';
 import 'package:kwt_flutter/common/widget/common_widgets.dart';
-import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
-/// 等级考试列表页（通过 SessionProvider 获取 client）
-class LevelExamPage extends StatefulWidget {
+/// 等级考试列表页（对齐 schedule-getx 的 ScoreCard 风格）
+class LevelExamPage extends ConsumerStatefulWidget {
   const LevelExamPage({super.key});
 
   @override
-  State<LevelExamPage> createState() => _LevelExamPageState();
+  ConsumerState<LevelExamPage> createState() => _LevelExamPageState();
 }
 
-class _LevelExamPageState extends State<LevelExamPage> {
+class _LevelExamPageState extends ConsumerState<LevelExamPage> {
   bool _busy = false;
   String? _error;
   List<ExamLevelEntry> _list = const [];
-  List<ExamLevelEntry> _filteredList = const [];
-  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(_filterData);
     Future.microtask(_load);
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  /// 过滤列表，支持按课程名与等级关键词匹配
-  void _filterData() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      if (query.isEmpty) {
-        _filteredList = _list;
-      } else {
-        _filteredList = _list.where((entry) =>
-            entry.course.toLowerCase().contains(query) ||
-            entry.totalLevel.toLowerCase().contains(query) ||
-            entry.writtenLevel.toLowerCase().contains(query) ||
-            entry.labLevel.toLowerCase().contains(query)
-        ).toList();
-      }
-    });
   }
 
   Future<void> _load() async {
@@ -55,15 +29,12 @@ class _LevelExamPageState extends State<LevelExamPage> {
       _error = null;
     });
     try {
-      final session = SessionProvider.read(context);
+      final session = ref.read(sessionServiceProvider);
       final data = await session.safeCall(context, () =>
         session.client.fetchExamLevel(),
       );
       if (data != null) {
-        setState(() {
-          _list = data;
-          _filteredList = data;
-        });
+        setState(() => _list = data);
       }
     } catch (e) {
       setState(() => _error = '加载失败: $e');
@@ -76,286 +47,147 @@ class _LevelExamPageState extends State<LevelExamPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('等级考试', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        automaticallyImplyLeading: true,
-        iconTheme: const IconThemeData(color: Colors.black),
+        title: const Text('等级考试'),
       ),
-      body: Column(
-        children: [
-          // 搜索栏
-          AppSearchBar(
-            controller: _searchController,
-            hintText: '搜索课程名称或等级...',
-            onClear: _filterData,
-          ),
-          
-          // 统计信息
-          if (_filteredList.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue[200]!),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
-                  const SizedBox(width: 12),
-                  Text(
-                    '共找到 ${_filteredList.length} 门课程',
-                    style: TextStyle(
-                      color: Colors.blue[700],
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+      body: _busy
+          ? const AppLoadingWidget()
+          : _error != null
+              ? AppErrorWidget(message: _error!, onRetry: _load)
+              : CustomScrollView(
+                  slivers: [
+                    _sliverExamList(),
+                    _emptyWidget(),
+                  ],
+                ),
+    );
+  }
 
-          if (_error != null) AppErrorWidget(message: _error!),
+  /// 考试列表（ScoreCard 风格）
+  Widget _sliverExamList() {
+    return SliverList.builder(
+      itemCount: _list.length,
+      itemBuilder: (context, index) {
+        final entry = _list[index];
+        return _ExamScoreCard(
+          subjectName: entry.course,
+          subTitle: '考试时间：${entry.startDate}',
+          score: entry.totalScore,
+          onTap: () => _showDetail(entry),
+        );
+      },
+    );
+  }
 
-          Expanded(
-            child: _busy
-                ? const AppLoadingWidget()
-                : _filteredList.isEmpty
-                    ? _buildEmptyState()
-                    : _buildExamList(),
+  /// 暂无数据
+  Widget _emptyWidget() {
+    if (_list.isEmpty && !_busy) {
+      return const SliverFillRemaining(
+        child: AppEmptyWidget(message: '暂无等级考试数据'),
+      );
+    }
+    return const SliverToBoxAdapter(child: SizedBox());
+  }
+
+  /// 考试详情弹窗（对齐 schedule-getx 的 AlertDialog 风格）
+  void _showDetail(ExamLevelEntry entry) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(entry.course, style: const TextStyle(fontWeight: FontWeight.w600)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _detailLine('笔试成绩', entry.writtenScore),
+            _detailLine('笔试等级', entry.writtenLevel),
+            _detailLine('机试成绩', entry.labScore),
+            _detailLine('机试等级', entry.labLevel),
+            _detailLine('总分', entry.totalScore),
+            _detailLine('总等级', entry.totalLevel),
+            _detailLine('开始时间', entry.startDate),
+            _detailLine('结束时间', entry.endDate),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('确定'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState() {
-    return AppEmptyWidget(
-      message: _searchController.text.isEmpty ? '暂无等级考试数据' : '未找到相关课程',
-      subtitle: _searchController.text.isNotEmpty ? '尝试使用其他关键词搜索' : null,
+  Widget _detailLine(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Text('$label：$value'),
     );
   }
+}
 
-  Widget _buildExamList() {
-    return AnimationLimiter(
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _filteredList.length,
-        itemBuilder: (context, index) {
-          final entry = _filteredList[index];
-          return AnimationConfiguration.staggeredList(
-            position: index,
-            duration: const Duration(milliseconds: 375),
-            child: SlideAnimation(
-              verticalOffset: 50.0,
-              child: FadeInAnimation(
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-            border: Border.all(color: Colors.grey[100]!),
-          ),
-          child: Column(
+/// 等级考试卡片（对齐 schedule-getx 的 ScoreCardComponent）
+class _ExamScoreCard extends StatelessWidget {
+  const _ExamScoreCard({
+    required this.subjectName,
+    this.subTitle,
+    this.score,
+    this.onTap,
+  });
+  final String subjectName;
+  final String? subTitle;
+  final String? score;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      surfaceTintColor: scheme.primary,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // 课程名称头部
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                  ),
-                ),
-                child: Text(
-                  entry.course,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              
-              // 成绩详情
-              Padding(
-                padding: const EdgeInsets.all(20),
+              Expanded(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // 笔试和机试成绩行
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildScoreCard(
-                            '笔试',
-                            entry.writtenScore,
-                            entry.writtenLevel,
-                            Colors.orange,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildScoreCard(
-                            '机试',
-                            entry.labScore,
-                            entry.labLevel,
-                            Colors.green,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      subjectName,
+                      style: TextStyle(fontSize: 15, color: scheme.onSurface),
                     ),
-                    
-                    const SizedBox(height: 20),
-                    
-                    // 总分和等级
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildScoreCard(
-                            '总分',
-                            entry.totalScore,
-                            entry.totalLevel,
-                            Colors.blue,
-                            isTotal: true,
-                          ),
-                        ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 20),
-                    
-                    // 考试时间
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey[200]!),
+                    if (subTitle != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        subTitle!,
+                        style: TextStyle(color: scheme.tertiary, fontSize: 13),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.schedule, color: Colors.grey[600], size: 18),
-                              const SizedBox(width: 8),
-                              Text(
-                                '考试时间',
-                                style: TextStyle(
-                                  color: Colors.grey[700],
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildTimeInfo('开始', entry.startDate, Colors.green),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: _buildTimeInfo('结束', entry.endDate, Colors.red),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
+                    ],
                   ],
                 ),
               ),
+              SizedBox(
+                width: 60,
+                child: Text(
+                  score ?? '',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: scheme.onPrimaryContainer,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ],
           ),
-        ))));
-      },
-    ));
-  }
-
-  Widget _buildScoreCard(String label, String score, String level, Color color, {bool isTotal = false}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: color.withOpacity(0.7),
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            score,
-            style: TextStyle(
-              color: color.withOpacity(0.8),
-              fontSize: isTotal ? 24 : 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              level,
-              style: TextStyle(
-                color: color.withOpacity(0.7),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeInfo(String label, String time, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: color.withOpacity(0.7),
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          time,
-          style: TextStyle(
-            color: color.withOpacity(0.8),
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

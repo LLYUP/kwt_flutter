@@ -1,7 +1,6 @@
-// 底部 Tab 框架页：承载课表/功能/我的，使用 IndexedStack 保持页面状态
 import 'package:flutter/material.dart';
 import 'package:kwt_flutter/pages/features_page.dart';
-import 'package:kwt_flutter/pages/profile_page.dart';
+import 'package:kwt_flutter/presentation/profile/pages/profile_page.dart';
 import 'package:kwt_flutter/pages/timetable_page.dart';
 
 /// Tab 容器页（不再需要外部传入 client，通过 SessionProvider 获取）
@@ -55,9 +54,21 @@ class _TabScaffoldState extends State<TabScaffold> {
         bottomNavigationBar: NavigationBar(
           selectedIndex: _index,
           destinations: const [
-            NavigationDestination(icon: Icon(Icons.table_chart_outlined), label: '课表'),
-            NavigationDestination(icon: Icon(Icons.explore_outlined), label: '功能'),
-            NavigationDestination(icon: Icon(Icons.person_outline), label: '我的'),
+            NavigationDestination(
+              icon: Icon(Icons.article_outlined),
+              selectedIcon: Icon(Icons.article_rounded),
+              label: '课表',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.explore_outlined),
+              selectedIcon: Icon(Icons.explore_rounded),
+              label: '功能',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person),
+              label: '我的',
+            ),
           ],
           onDestinationSelected: (i) => setState(() => _index = i),
         ),

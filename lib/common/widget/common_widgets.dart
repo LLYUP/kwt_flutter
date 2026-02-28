@@ -1,4 +1,4 @@
-// 通用 UI 组件：加载、错误、空状态、搜索栏
+// 通用 UI 组件：加载、错误、空状态、搜索栏（使用主题色）
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -10,9 +10,10 @@ class AppLoadingWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Shimmer.fromColors(
-      baseColor: Colors.grey[300]!,
-      highlightColor: Colors.grey[100]!,
+      baseColor: scheme.surfaceContainerHighest,
+      highlightColor: scheme.surfaceContainerLowest,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: itemCount,
@@ -21,7 +22,7 @@ class AppLoadingWidget extends StatelessWidget {
           child: Container(
             height: 90,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: scheme.surface,
               borderRadius: BorderRadius.circular(12),
             ),
           ),
@@ -31,32 +32,61 @@ class AppLoadingWidget extends StatelessWidget {
   }
 }
 
-/// 错误提示条
+/// 错误提示界面（带重试功能）
 class AppErrorWidget extends StatelessWidget {
-  const AppErrorWidget({super.key, required this.message});
+  const AppErrorWidget({super.key, required this.message, this.onRetry});
   final String message;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.red[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.red[200]!),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.error_outline, color: Colors.red[600], size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: Colors.red[600]),
+    final scheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: scheme.errorContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.error_outline_rounded, size: 64, color: scheme.error),
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            Text(
+              '出错了',
+              style: TextStyle(
+                fontSize: 20,
+                color: scheme.onSurface,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14),
+            ),
+            if (onRetry != null) ...[
+              const SizedBox(height: 32),
+              ElevatedButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh),
+                label: const Text('重试'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  backgroundColor: scheme.primary,
+                  foregroundColor: scheme.onPrimary,
+                  elevation: 0,
+                ),
+              ),
+            ]
+          ],
+        ),
       ),
     );
   }
@@ -67,7 +97,7 @@ class AppEmptyWidget extends StatelessWidget {
   const AppEmptyWidget({
     super.key,
     required this.message,
-    this.icon = Icons.search_off,
+    this.icon = Icons.search_off_rounded,
     this.subtitle,
   });
   final String message;
@@ -76,28 +106,41 @@ class AppEmptyWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 72, color: scheme.onSurfaceVariant),
             ),
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 24),
             Text(
-              subtitle!,
-              style: TextStyle(color: Colors.grey[500], fontSize: 14),
+              message,
+              style: TextStyle(
+                fontSize: 18,
+                color: scheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
             ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                subtitle!,
+                style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -117,17 +160,18 @@ class AppSearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: scheme.outlineVariant),
       ),
       child: Row(
         children: [
-          Icon(Icons.search, color: Colors.grey[600], size: 20),
+          Icon(Icons.search, color: scheme.onSurfaceVariant, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
@@ -135,7 +179,7 @@ class AppSearchBar extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: hintText,
                 border: InputBorder.none,
-                hintStyle: const TextStyle(color: Colors.grey),
+                hintStyle: TextStyle(color: scheme.onSurfaceVariant),
               ),
             ),
           ),
@@ -145,7 +189,7 @@ class AppSearchBar extends StatelessWidget {
                 controller.clear();
                 onClear?.call();
               },
-              icon: Icon(Icons.clear, color: Colors.grey[600], size: 18),
+              icon: Icon(Icons.clear, color: scheme.onSurfaceVariant, size: 18),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
             ),

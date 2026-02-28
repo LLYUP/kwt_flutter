@@ -7,7 +7,7 @@ class AcademicCalendar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('校历', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
+        title: Text('校历', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600)),
       ),
       body: InteractiveViewer(
         minScale: 0.8,

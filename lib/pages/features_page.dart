@@ -1,95 +1,126 @@
-// 功能聚合页：以网格形式展示可用功能入口
+// 功能聚合页：以 ElevatedButton 网格形式展示可用功能入口（对齐 schedule-getx 风格）
 import 'package:flutter/material.dart';
-import 'package:kwt_flutter/pages/class_timetable_page.dart';
-import 'package:kwt_flutter/pages/grades_page.dart';
+import 'package:kwt_flutter/presentation/timetable/pages/class_timetable_page.dart';
+import 'package:kwt_flutter/presentation/grades/pages/grades_page.dart';
 import 'package:kwt_flutter/pages/level_exam_page.dart';
 import 'package:kwt_flutter/pages/schedule_time_page.dart';
 import 'package:kwt_flutter/pages/academic_calendar_page.dart';
 
-/// 功能入口页（不再需要外部传入 client）
+/// 功能入口页
 class FeaturesPage extends StatelessWidget {
   const FeaturesPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('功能区域', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, color: Colors.black)),
-          const SizedBox(height: 12),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final int crossAxisCount = () {
-                  if (constraints.maxWidth >= 720) return 6;
-                  if (constraints.maxWidth >= 480) return 5;
-                  return 4;
-                }();
-                const double spacing = 10;
-                final double itemWidth = (constraints.maxWidth - spacing * (crossAxisCount - 1)) / crossAxisCount;
-                final double itemHeight = itemWidth * 0.9;
-                return GridView.count(
-                  crossAxisCount: crossAxisCount,
-                  crossAxisSpacing: spacing,
-                  mainAxisSpacing: spacing,
-                  children: [
-                    _tileSized(context, '班级课表', Icons.class_, itemWidth, itemHeight, () => _push(context, const ClassTimetablePage())),
-                    _tileSized(context, '课程成绩', Icons.grade, itemWidth, itemHeight, () => _push(context, const GradesPage())),
-                    _tileSized(context, '等级考试', Icons.assessment, itemWidth, itemHeight, () => _push(context, const LevelExamPage())),
-                    _tileSized(context, '作息时间', Icons.schedule, itemWidth, itemHeight, () => _push(context, const ScheduleTimePage()), requireLogin: false),
-                    _tileSized(context, '校历', Icons.calendar_month, itemWidth, itemHeight, () => _push(context, const AcademicCalendar()), requireLogin: false),
-                  ],
-                );
-              },
-            ),
+      child: CustomScrollView(
+        slivers: <Widget>[
+          // 课表区域标题
+          _sectionTitle(context, '课表区域'),
+          // 课表区域卡片
+          _cardGrid(context, _scheduleCards),
+          // 生活助手标题
+          SliverPadding(
+            padding: const EdgeInsets.only(top: 20),
+            sliver: _sectionTitle(context, '生活助手'),
           ),
-        ]),
+          // 生活助手区域卡片
+          _cardGrid(context, _lifeCards),
+          // 底部间距
+          const SliverToBoxAdapter(child: SizedBox(height: 32)),
+        ],
       ),
     );
   }
 
-  /// 功能卡片
-  Widget _tileSized(BuildContext context, String label, IconData icon, double w, double h, VoidCallback onTap, {bool requireLogin = true}) {
-    return InkWell(
-      onTap: () {
-        // 在 SessionProvider 包裹下，已登录才能进入此页，无需再次检查
-        onTap();
-      },
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 1.5,
-        child: SizedBox(
-          width: w,
-          height: h,
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(
-              icon,
-              size: (w * 0.45).clamp(18.0, 28.0) as double,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 6),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                label,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: (w * 0.26).clamp(10.0, 14.0) as double,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ]),
+  /// 课表区域功能列表
+  List<Map<String, dynamic>> get _scheduleCards => [
+    {'title': '班级课表', 'icon': Icons.class_, 'page': const ClassTimetablePage()},
+    {'title': '课程成绩', 'icon': Icons.grade, 'page': const GradesPage()},
+    {'title': '等级考试', 'icon': Icons.assessment, 'page': const LevelExamPage()},
+  ];
+
+  /// 生活助手功能列表
+  List<Map<String, dynamic>> get _lifeCards => [
+    {'title': '作息时间', 'icon': Icons.schedule, 'page': const ScheduleTimePage()},
+    {'title': '校历', 'icon': Icons.calendar_month, 'page': const AcademicCalendar()},
+  ];
+
+  /// 区域标题
+  Widget _sectionTitle(BuildContext context, String title) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 20, left: 16),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
         ),
       ),
     );
   }
 
-  /// 通用跳转封装
-  Future<void> _push(BuildContext context, Widget page) async {
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  /// 功能卡片网格
+  Widget _cardGrid(BuildContext context, List<Map<String, dynamic>> cards) {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 4,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 0.95,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => _functionCardBtn(context, cards[index]),
+          childCount: cards.length,
+        ),
+      ),
+    );
+  }
+
+  /// 功能按钮卡片（ElevatedButton 样式，对齐 schedule-getx）
+  Widget _functionCardBtn(BuildContext context, Map<String, dynamic> card) {
+    final scheme = Theme.of(context).colorScheme;
+    return ElevatedButton(
+      onPressed: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => card['page'] as Widget),
+        );
+      },
+      style: ButtonStyle(
+        shape: WidgetStateProperty.all(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        padding: WidgetStateProperty.all(
+          const EdgeInsets.symmetric(vertical: 14),
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            card['icon'] as IconData,
+            size: 28,
+            color: scheme.primary,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            card['title'] as String,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              color: scheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -1,34 +1,22 @@
 // 个人中心页面：展示登录状态、基本信息、学期与开始日期设置等
 import 'package:flutter/material.dart';
-import 'package:kwt_flutter/services/settings.dart';
-import 'package:kwt_flutter/services/session_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kwt_flutter/presentation/profile/controllers/profile_controller.dart';
 import 'package:kwt_flutter/config/app_config.dart';
 import 'package:kwt_flutter/services/update_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:kwt_flutter/presentation/auth/pages/login_page.dart';
 
-/// 个人中心页（通过 SessionProvider 获取 client）
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
-  final _settings = SettingsService();
+class _ProfilePageState extends ConsumerState<ProfilePage> {
   final _termCtrl = TextEditingController();
   final _startDateCtrl = TextEditingController();
-  bool _loggedIn = false;
-  List<String> _termOptions = const [];
-  bool _loadingTerms = false;
-  String? _studentId;
-  String? _studentName;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
 
   @override
   void dispose() {
@@ -37,77 +25,47 @@ class _ProfilePageState extends State<ProfilePage> {
     super.dispose();
   }
 
-  /// 加载本地设置与登录信息
-  Future<void> _load() async {
-    _termCtrl.text = await _settings.getTerm() ?? '';
-    _startDateCtrl.text = await _settings.getStartDate() ?? '';
-    _loggedIn = await _settings.isLoggedIn();
-    _studentId = await _settings.getStudentId();
-    _studentName = await _settings.getStudentName();
-    setState(() {});
-    _loadTerms();
-  }
-
-  /// 自动保存学期与开始日期
-  Future<void> _autoSave() async {
-    await _settings.saveTerm(_termCtrl.text.trim());
-    await _settings.saveStartDate(_startDateCtrl.text.trim());
-  }
-
-  /// 从后端拉取学期选项并设置默认值
-  Future<void> _loadTerms() async {
-    setState(() => _loadingTerms = true);
-    try {
-      final session = SessionProvider.read(context);
-      final terms = await session.client.fetchTermOptions();
-      if (terms.isNotEmpty) {
-        _termOptions = terms;
-        if (_termCtrl.text.isEmpty) {
-          _termCtrl.text = terms.first;
-          await _autoSave();
-        }
-      }
-    } catch (_) {} finally {
-      if (mounted) setState(() => _loadingTerms = false);
-    }
-  }
-
-  /// 学期选择器：后端选项优先，失败回退自由输入
   Widget _buildTermDropdown() {
-    if (_loadingTerms) {
+    final state = ref.watch(profileControllerProvider);
+    final controller = ref.read(profileControllerProvider.notifier);
+
+    if (state.isLoadingTerms) {
       return const SizedBox(height: 56, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
     }
-    if (_termOptions.isEmpty) {
+    if (state.termOptions.isEmpty) {
+      // Sync TextController with active state.
+      if (_termCtrl.text != state.selectedTerm) {
+        _termCtrl.text = state.selectedTerm;
+      }
       return TextField(
         controller: _termCtrl,
         decoration: const InputDecoration(labelText: '学期'),
-        onChanged: (_) => _autoSave(),
+        onChanged: (v) => controller.saveTerm(v),
       );
     }
     return DropdownButtonFormField<String>(
-      value: _termOptions.contains(_termCtrl.text) ? _termCtrl.text : null,
-      items: _termOptions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+      initialValue: state.termOptions.contains(state.selectedTerm) ? state.selectedTerm : null,
+      items: state.termOptions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
       onChanged: (v) {
         if (v == null) return;
-        _termCtrl.text = v;
-        _autoSave();
+        controller.saveTerm(v);
       },
       decoration: const InputDecoration(labelText: '学期'),
     );
   }
 
-  /// 顶部资料卡片：显示姓名、学号与登录状态
-  /// 顶部资料卡片：现代风格渐变背景与发光阴影
   Widget _buildHeaderCard() {
     final scheme = Theme.of(context).colorScheme;
-    final logged = _loggedIn;
+    final state = ref.watch(profileControllerProvider);
+    final logged = state.isLoggedIn;
+    
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            scheme.primary.withOpacity(0.85),
-            scheme.primary.withOpacity(0.6),
-            scheme.secondary.withOpacity(0.8),
+            scheme.primary.withValues(alpha: 0.85),
+            scheme.primary.withValues(alpha: 0.6),
+            scheme.secondary.withValues(alpha: 0.8),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -115,7 +73,7 @@ class _ProfilePageState extends State<ProfilePage> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: scheme.primary.withOpacity(0.3),
+            color: scheme.primary.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -128,12 +86,12 @@ class _ProfilePageState extends State<ProfilePage> {
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
             ),
             child: const CircleAvatar(
               radius: 32,
               backgroundColor: Colors.white,
-              child: Icon(Icons.person, color: Colors.blueAccent, size: 36),
+              child: Icon(Icons.person, size: 36),
             ),
           ),
           const SizedBox(width: 20),
@@ -143,9 +101,9 @@ class _ProfilePageState extends State<ProfilePage> {
               children: [
                 Text(
                   logged
-                      ? (_studentName?.isNotEmpty == true
-                          ? _studentName!
-                          : (_studentId?.isNotEmpty == true ? _studentId! : '已登录'))
+                      ? (state.studentName?.isNotEmpty == true
+                          ? state.studentName!
+                          : (state.studentId?.isNotEmpty == true ? state.studentId! : '已登录'))
                       : '未登录',
                   style: const TextStyle(
                     fontSize: 24,
@@ -158,11 +116,11 @@ class _ProfilePageState extends State<ProfilePage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    logged ? (_studentId?.isNotEmpty == true ? 'ID: $_studentId' : 'ID: -') : '未登录状态',
+                    logged ? (state.studentId?.isNotEmpty == true ? 'ID: ${state.studentId}' : 'ID: -') : '未登录状态',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
@@ -180,6 +138,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Keep internal local _startDateCtrl synced
+    final state = ref.watch(profileControllerProvider);
+    final controller = ref.read(profileControllerProvider.notifier);
+    if (_startDateCtrl.text.isEmpty && state.selectedStartDate.isNotEmpty) {
+      _startDateCtrl.text = state.selectedStartDate;
+    }
+
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(16),
@@ -211,9 +176,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     final y = picked.year.toString().padLeft(4, '0');
                     final m = picked.month.toString().padLeft(2, '0');
                     final d = picked.day.toString().padLeft(2, '0');
-                    _startDateCtrl.text = '$y-$m-$d';
-                    _autoSave();
-                    setState(() {});
+                    final newDate = '$y-$m-$d';
+                    _startDateCtrl.text = newDate;
+                    controller.saveStartDate(newDate);
                   }
                 },
               ),
@@ -224,22 +189,17 @@ class _ProfilePageState extends State<ProfilePage> {
           _SectionTitle('关于与账户'),
           const SizedBox(height: 8),
 
-          Card(
-            margin: const EdgeInsets.symmetric(vertical: 6),
-            child: ListTile(
-              leading: const Icon(Icons.system_update_alt),
-              title: const Text('检查更新'),
-              subtitle: Text('当前版本：${AppConfig.appVersion}'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: _checkForUpdate,
-            ),
+          ListTile(
+            leading: const Icon(Icons.system_update_alt),
+            title: const Text('检查更新'),
+            subtitle: Text('当前版本：${AppConfig.appVersion}'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _checkForUpdate,
           ),
-          Card(
-            margin: const EdgeInsets.symmetric(vertical: 6),
-            child: ListTile(
-              leading: const Icon(Icons.support_agent_outlined),
-              title: const Text('联系作者'),
-              trailing: const Icon(Icons.chevron_right),
+          ListTile(
+            leading: const Icon(Icons.support_agent_outlined),
+            title: const Text('联系作者'),
+            trailing: const Icon(Icons.chevron_right),
               onTap: () {
                 showDialog(
                   context: context,
@@ -262,26 +222,36 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 );
               },
-            ),
           ),
-          _ActionTile(icon: Icons.login_outlined, label: '退出登录', onTap: _doLogout),
+          ListTile(
+            leading: const Icon(Icons.login_outlined),
+            title: const Text('退出登录'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () async {
+              await controller.logout();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已退出登录')));
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                  (route) => false,
+                );
+              }
+            },
+          ),
           const SizedBox(height: 24),
           Center(
             child: Text(
               '作者：刘先森',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[600], fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(height: 8),
         ],
       ),
     );
-  }
-
-  /// 退出登录：通过 SessionProvider 统一处理
-  void _doLogout() async {
-    final session = SessionProvider.read(context);
-    await session.logout(context);
   }
 
   Future<void> _checkForUpdate() async {
@@ -353,19 +323,7 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({required this.icon, required this.label, required this.onTap});
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      child: ListTile(leading: Icon(icon), title: Text(label), trailing: const Icon(Icons.chevron_right), onTap: onTap),
-    );
-  }
-}
+
 
 class _ContactRow extends StatelessWidget {
   const _ContactRow({required this.label, required this.value});
