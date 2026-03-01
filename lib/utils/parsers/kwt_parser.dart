@@ -2,7 +2,7 @@ import 'package:html/parser.dart' as html_parser;
 import 'package:html/dom.dart' as dom;
 import 'package:kwt_flutter/models/models.dart';
 
-/// 科文通 HTML 解析器：负责将所有后端返回的 HTML 解析为结构化模型
+/// 轻悦校园 HTML 解析器：负责将所有后端返回的 HTML 解析为结构化模型
 class KwtParser {
   /// 单例防止实例化
   KwtParser._();

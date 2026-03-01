@@ -68,7 +68,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   Icon(Icons.school_rounded, size: 72, color: Theme.of(context).colorScheme.primary),
                   const SizedBox(height: 16),
                   Text(
-                    '科文通',
+                    '轻悦校园',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,

@@ -11,7 +11,7 @@ import 'package:kwt_flutter/services/api/training_plan_api.dart';
 
 export 'package:kwt_flutter/services/api/api_client.dart' show AuthExpiredException;
 
-/// 科文通后端客户端 (Facade 模式重构)
+/// 轻悦校园后端客户端 (Facade 模式重构)
 /// 
 /// 内部通过组合 ApiClient 和 各个业务 Api 类来提供一致的接口，
 /// 保持向下兼容，便于后续 UI 层逐步迁移到直接使用对应的 Api 或 Repository。
