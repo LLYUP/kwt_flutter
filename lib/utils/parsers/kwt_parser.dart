@@ -355,4 +355,94 @@ class KwtParser {
     }
     return result;
   }
+
+  /// 解析教材信息
+  static List<TextbookEntry> parseTextbooks(String html) {
+    final document = html_parser.parse(html);
+    final table = document.querySelector('table.layui-table');
+    if (table == null) return [];
+    
+    final rows = table.querySelectorAll('tr');
+    final result = <TextbookEntry>[];
+    
+    // 跳过表头(第0行)，从第1行开始解析
+    for (int i = 1; i < rows.length; i++) {
+      final cells = rows[i].querySelectorAll('td');
+      if (cells.length < 10) continue; // 需要至少10列
+      
+      String txt(dom.Element e) => e.text.trim();
+      
+      result.add(TextbookEntry(
+        courseCode: txt(cells[0]),
+        courseName: txt(cells[1]),
+        isbn: txt(cells[2]),
+        textbookName: txt(cells[3]),
+        price: txt(cells[4]),
+        edition: txt(cells[5]),
+        publisher: txt(cells[6]),
+        teacher: txt(cells[7]),
+        department: txt(cells[8]),
+        orderStatus: txt(cells[9]),
+      ));
+    }
+    
+    return result;
+  }
+
+  /// 解析教室搜索列表
+  static List<Map<String, String>> parseClassroomSearch(String html) {
+    final document = html_parser.parse(html);
+    final table = document.querySelector('table.layui-table');
+    if (table == null) return [];
+    
+    final rows = table.querySelectorAll('tr');
+    final result = <Map<String, String>>[];
+    
+    // 跳过表头(第0行)，从第1行开始解析
+    for (int i = 1; i < rows.length; i++) {
+      final cells = rows[i].querySelectorAll('td');
+      if (cells.length < 5) continue; 
+      
+      final id = cells[0].text.trim();
+      final name = cells[1].text.trim();
+      
+      if (id.isNotEmpty && name.isNotEmpty) {
+        result.add({'id': id, 'name': name});
+      }
+    }
+    
+    return result;
+  }
+
+  /// 解析培养方案列表
+  static List<TrainingPlanEntry> parseTrainingPlan(String html) {
+    final document = html_parser.parse(html);
+    final table = document.querySelector('table.layui-table');
+    if (table == null) return [];
+
+    final rows = table.querySelectorAll('tr');
+    final result = <TrainingPlanEntry>[];
+
+    // 首行是表头
+    for (int i = 1; i < rows.length; i++) {
+      final cells = rows[i].querySelectorAll('td');
+      // 至少需11列
+      if (cells.length < 11) continue;
+
+      result.add(TrainingPlanEntry(
+        index: cells[0].text.trim(),
+        term: cells[1].text.trim(),
+        courseCode: cells[2].text.trim(),
+        courseName: cells[3].text.trim(),
+        department: cells[4].text.trim(),
+        credits: cells[5].text.trim(),
+        totalHours: cells[6].text.trim(),
+        examType: cells[7].text.trim(),
+        courseNature: cells[8].text.trim(),
+        courseAttr: cells[9].text.trim(),
+        isExam: cells[10].text.trim(),
+      ));
+    }
+    return result;
+  }
 }

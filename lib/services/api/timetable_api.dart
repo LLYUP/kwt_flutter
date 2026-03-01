@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:kwt_flutter/models/models.dart';
 import 'package:kwt_flutter/services/api/api_client.dart';
+import 'package:kwt_flutter/config/app_config.dart';
 import 'package:kwt_flutter/utils/parsers/kwt_parser.dart';
 import 'package:kwt_flutter/utils/response_helper.dart';
 
@@ -20,7 +21,7 @@ class TimetableApi {
     bool showWeekend = false,
   }) async {
     final response = await dio.get(
-      '/framework/mainV_index_loadkb.htmlx',
+      ApiEndpoints.personalTimetable,
       queryParameters: {
         'rq': date,
         'sjmsValue': timeMode,
@@ -64,11 +65,52 @@ class TimetableApi {
       'jc2': sectionEnd,
     });
     final response = await dio.post(
-      '/kbcx/kbxx_xzb_ifr',
+      ApiEndpoints.classTimetable,
       data: form,
       options: ResponseHelper.createFormRequestOptions(baseUrl),
     );
     final html = ResponseHelper.decodeHtmlResponse(response);
+    return KwtParser.parseClassTimetableStructured(html);
+  }
+
+  Future<List<TimetableEntry>> fetchClassroomTimetableStructured({
+    required String term,
+    required String timeMode,
+    String classroom = '',
+    String classroomId = '',
+    String department = '',
+    String weekStart = '',
+    String weekEnd = '',
+    String weekdayStart = '',
+    String weekdayEnd = '',
+    String sectionStart = '',
+    String sectionEnd = '',
+  }) async {
+    final form = FormData.fromMap({
+      'xnxqh': term,
+      'kbjcmsid': timeMode,
+      'skyx': department,
+      'skjs': classroom,
+      'zc1': weekStart,
+      'zc2': weekEnd,
+      'skxq1': weekdayStart,
+      'skxq2': weekdayEnd,
+      'jc1': sectionStart,
+      'jc2': sectionEnd,
+      // 表单中附带的空值占位
+      'xqid': '',
+      'jzwid': '',
+      'jxlvalue': '',
+      'skjsid': '',
+      'jsid': classroomId,
+    });
+    final response = await dio.post(
+      ApiEndpoints.classroomTimetable,
+      data: form,
+      options: ResponseHelper.createFormRequestOptions(baseUrl),
+    );
+    final html = ResponseHelper.decodeHtmlResponse(response);
+    // 教室课表和班级课表 HTML 的表格结构一致
     return KwtParser.parseClassTimetableStructured(html);
   }
 
@@ -77,7 +119,7 @@ class TimetableApi {
     int maxRow = 10,
   }) async {
     final response = await dio.post(
-      '/kbcx/querySkbj',
+      ApiEndpoints.searchClasses,
       data: FormData.fromMap({'skbj': keyword, 'maxRow': maxRow.toString()}),
       options: Options(
         headers: {
@@ -97,5 +139,18 @@ class TimetableApi {
           }).toList();
     }
     return [];
+  }
+
+  /// 搜索教室名称
+  Future<List<Map<String, String>>> searchClassrooms({
+    required String keyword,
+  }) async {
+    final response = await dio.post(
+      ApiEndpoints.searchClassrooms,
+      data: FormData.fromMap({'jsmc': keyword}),
+      options: ResponseHelper.createFormRequestOptions(baseUrl),
+    );
+    final html = ResponseHelper.decodeHtmlResponse(response);
+    return KwtParser.parseClassroomSearch(html);
   }
 }

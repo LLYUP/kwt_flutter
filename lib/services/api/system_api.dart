@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:kwt_flutter/services/api/api_client.dart';
+import 'package:kwt_flutter/config/app_config.dart';
 import 'package:kwt_flutter/utils/parsers/kwt_parser.dart';
 import 'package:kwt_flutter/utils/response_helper.dart';
 
@@ -14,7 +15,7 @@ class SystemApi {
   Future<Map<String, String>> fetchProfileInfo() async {
     try {
       final res = await dio.get(
-        '/framework/xsMainV.htmlx',
+        ApiEndpoints.profile,
         options: ResponseHelper.createHtmlRequestOptions(baseUrl),
       );
       final html = ResponseHelper.decodeHtmlResponse(res);
@@ -38,12 +39,12 @@ class SystemApi {
       }
     }
 
-    var terms = await tryGet('/kscj/cjcx_query');
+    var terms = await tryGet(ApiEndpoints.termOptions);
     if (terms.isEmpty) {
-      terms = await tryGet('/kscj/cjcx_list');
+      terms = await tryGet(ApiEndpoints.termOptionsFallback1);
     }
     if (terms.isEmpty) {
-      terms = await tryGet('/kbcx/kbxx_xzb');
+      terms = await tryGet(ApiEndpoints.termOptionsFallback2);
     }
     int termKey(String t) {
       final m = RegExp(r'^(\d{4})-\d{4}-(\d)').firstMatch(t);

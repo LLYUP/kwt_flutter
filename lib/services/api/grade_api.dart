@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:kwt_flutter/models/models.dart';
 import 'package:kwt_flutter/services/api/api_client.dart';
+import 'package:kwt_flutter/config/app_config.dart';
 import 'package:kwt_flutter/utils/parsers/kwt_parser.dart';
 import 'package:kwt_flutter/utils/response_helper.dart';
 
@@ -29,7 +30,7 @@ class GradeApi {
       'mold': mold,
     });
     final response = await dio.post(
-      '/kscj/cjcx_list',
+      ApiEndpoints.grades,
       data: form,
       options: ResponseHelper.createFormRequestOptions(baseUrl),
     );
@@ -54,7 +55,7 @@ class GradeApi {
       'mold': mold,
     });
     final response = await dio.post(
-      '/kscj/cjcx_list',
+      ApiEndpoints.grades,
       data: form,
       options: ResponseHelper.createFormRequestOptions(baseUrl),
     );
@@ -64,7 +65,7 @@ class GradeApi {
 
   Future<List<ExamLevelEntry>> fetchExamLevel() async {
     final response = await dio.get(
-      '/kscj/djkscj_list',
+      ApiEndpoints.examLevel,
       options: ResponseHelper.createHtmlRequestOptions(baseUrl),
     );
     final html = ResponseHelper.decodeAndValidateHtml(response);

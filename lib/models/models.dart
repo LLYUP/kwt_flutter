@@ -77,9 +77,59 @@ class ExamLevelEntry {
   final String totalLevel;
   final String startDate;
   final String endDate;
+}// 教材信息条目模型
+class TextbookEntry {
+  TextbookEntry({
+    required this.courseCode,
+    required this.courseName,
+    required this.isbn,
+    required this.textbookName,
+    required this.price,
+    required this.edition,
+    required this.publisher,
+    required this.teacher,
+    required this.department,
+    required this.orderStatus,
+  });
+
+  final String courseCode;
+  final String courseName;
+  final String isbn;
+  final String textbookName;
+  final String price;
+  final String edition;
+  final String publisher;
+  final String teacher;
+  final String department;
+  final String orderStatus;
 }
 
+// 培养方案条目模型
+class TrainingPlanEntry {
+  TrainingPlanEntry({
+    required this.index,
+    required this.term,
+    required this.courseCode,
+    required this.courseName,
+    required this.department,
+    required this.credits,
+    required this.totalHours,
+    required this.examType,
+    required this.courseNature,
+    required this.courseAttr,
+    required this.isExam,
+  });
 
-
-
+  final String index;         // 序号
+  final String term;          // 开课学期
+  final String courseCode;    // 课程编号
+  final String courseName;    // 课程名称
+  final String department;    // 开课单位
+  final String credits;       // 学分
+  final String totalHours;    // 总学时
+  final String examType;      // 考核方式
+  final String courseNature;  // 课程性质（公共课/平台课程/专业课程）
+  final String courseAttr;    // 课程属性（必修/限选/任选）
+  final String isExam;        // 是否考试
+}
 

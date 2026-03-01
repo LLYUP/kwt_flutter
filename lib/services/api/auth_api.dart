@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:kwt_flutter/services/api/api_client.dart';
+import 'package:kwt_flutter/config/app_config.dart';
 import 'package:kwt_flutter/utils/response_helper.dart';
 
 class AuthApi {
@@ -16,7 +17,7 @@ class AuthApi {
 
   Future<Uint8List> fetchCaptcha() async {
     final response = await dio.get(
-      '/verifycode.servlet',
+      ApiEndpoints.captcha,
       options: Options(
         responseType: ResponseType.bytes,
         headers: {
@@ -42,7 +43,7 @@ class AuthApi {
       'encoded': encoded,
     };
     final response = await dio.post(
-      '/xk/LoginToXk',
+      ApiEndpoints.login,
       queryParameters: params,
       options: Options(
         responseType: ResponseType.bytes,
@@ -61,7 +62,7 @@ class AuthApi {
   Future<void> logout() async {
     try {
       await dio.post(
-        '/xk/LoginToXk',
+        ApiEndpoints.login,
         queryParameters: {'method': 'exit'},
         options: Options(
           headers: {'Referer': '$baseUrl/'},

@@ -5,6 +5,9 @@ import 'package:kwt_flutter/presentation/grades/pages/grades_page.dart';
 import 'package:kwt_flutter/pages/level_exam_page.dart';
 import 'package:kwt_flutter/pages/schedule_time_page.dart';
 import 'package:kwt_flutter/pages/academic_calendar_page.dart';
+import 'package:kwt_flutter/presentation/textbook/pages/textbook_page.dart';
+import 'package:kwt_flutter/presentation/timetable/pages/classroom_timetable_page.dart';
+import 'package:kwt_flutter/presentation/training_plan/pages/training_plan_page.dart';
 
 /// 功能入口页
 class FeaturesPage extends StatelessWidget {
@@ -36,8 +39,11 @@ class FeaturesPage extends StatelessWidget {
   /// 课表区域功能列表
   List<Map<String, dynamic>> get _scheduleCards => [
     {'title': '班级课表', 'icon': Icons.class_, 'page': const ClassTimetablePage()},
+    {'title': '教室课表', 'icon': Icons.meeting_room, 'page': const ClassroomTimetablePage()},
     {'title': '课程成绩', 'icon': Icons.grade, 'page': const GradesPage()},
     {'title': '等级考试', 'icon': Icons.assessment, 'page': const LevelExamPage()},
+    {'title': '培养方案', 'icon': Icons.account_tree, 'page': const TrainingPlanPage()},
+    {'title': '教材信息', 'icon': Icons.menu_book, 'page': const TextbookPage()},
   ];
 
   /// 生活助手功能列表

@@ -6,6 +6,8 @@ import 'package:kwt_flutter/services/api/auth_api.dart';
 import 'package:kwt_flutter/services/api/timetable_api.dart';
 import 'package:kwt_flutter/services/api/grade_api.dart';
 import 'package:kwt_flutter/services/api/system_api.dart';
+import 'package:kwt_flutter/services/api/textbook_api.dart';
+import 'package:kwt_flutter/services/api/training_plan_api.dart';
 
 export 'package:kwt_flutter/services/api/api_client.dart' show AuthExpiredException;
 
@@ -21,12 +23,16 @@ class KwtClient {
   late final TimetableApi _timetableApi;
   late final GradeApi _gradeApi;
   late final SystemApi _systemApi;
+  late final TextbookApi _textbookApi;
+  late final TrainingPlanApi _trainingPlanApi;
 
   KwtClient._internal(this._apiClient) {
     _authApi = AuthApi(_apiClient);
     _timetableApi = TimetableApi(_apiClient);
     _gradeApi = GradeApi(_apiClient);
     _systemApi = SystemApi(_apiClient);
+    _textbookApi = TextbookApi(_apiClient);
+    _trainingPlanApi = TrainingPlanApi(_apiClient);
   }
 
   /// 创建带持久化 Cookie 存储的客户端
@@ -114,6 +120,42 @@ class KwtClient {
     );
   }
 
+  /// 拉取教室课表（结构化实体）
+  Future<List<TimetableEntry>> fetchClassroomTimetableStructured({
+    required String term,
+    required String timeMode,
+    String classroom = '',
+    String classroomId = '',
+    String department = '',
+    String weekStart = '',
+    String weekEnd = '',
+    String weekdayStart = '',
+    String weekdayEnd = '',
+    String sectionStart = '',
+    String sectionEnd = '',
+  }) {
+    return _timetableApi.fetchClassroomTimetableStructured(
+      term: term,
+      timeMode: timeMode,
+      classroom: classroom,
+      classroomId: classroomId,
+      department: department,
+      weekStart: weekStart,
+      weekEnd: weekEnd,
+      weekdayStart: weekdayStart,
+      weekdayEnd: weekdayEnd,
+      sectionStart: sectionStart,
+      sectionEnd: sectionEnd,
+    );
+  }
+
+  /// 搜索教室名称
+  Future<List<Map<String, String>>> searchClassrooms({
+    required String keyword,
+  }) {
+    return _timetableApi.searchClassrooms(keyword: keyword);
+  }
+
   /// 搜索班级
   Future<List<Map<String, String>>> searchClasses({
     required String keyword,
@@ -163,5 +205,27 @@ class KwtClient {
   /// 拉取等级考试成绩（结构化实体）
   Future<List<ExamLevelEntry>> fetchExamLevel() {
     return _gradeApi.fetchExamLevel();
+  }
+
+  /// 拉取教材信息
+  Future<List<TextbookEntry>> fetchTextbooks({
+    required String termId,
+    String department = '',
+    String courseName = '',
+    String teacher = '',
+    String schoolCode = '',
+  }) {
+    return _textbookApi.fetchTextbooks(
+      termId: termId,
+      department: department,
+      courseName: courseName,
+      teacher: teacher,
+      schoolCode: schoolCode,
+    );
+  }
+
+  /// 拉取培养方案
+  Future<List<TrainingPlanEntry>> fetchTrainingPlan() {
+    return _trainingPlanApi.fetchTrainingPlan();
   }
 }
