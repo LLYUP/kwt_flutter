@@ -17,10 +17,18 @@ class TrainingPlanPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('培养方案'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => controller.fetchTrainingPlan(),
-          ),
+          if (state.termOptions.isNotEmpty)
+            PopupMenuButton<String>(
+              icon: Icon(Icons.filter_list, color: scheme.onSurface),
+              initialValue: state.selectedTerm,
+              onSelected: (v) => controller.setTerm(v),
+              itemBuilder: (_) => state.termOptions
+                  .map((e) => PopupMenuItem(
+                        value: e,
+                        child: Text(e == state.selectedTerm ? '✅ $e' : e),
+                      ))
+                  .toList(),
+            ),
         ],
       ),
       body: _buildBody(context, state, controller, scheme),
@@ -43,13 +51,18 @@ class TrainingPlanPage extends ConsumerWidget {
       return const AppEmptyWidget(message: '暂无培养方案数据');
     }
 
+    final displayPlans = state.filteredPlans;
+    if (displayPlans.isEmpty) {
+      return const AppEmptyWidget(message: '该学期暂无培养方案');
+    }
+
     return RefreshIndicator(
       onRefresh: () => controller.fetchTrainingPlan(),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: state.plans.length,
+        itemCount: displayPlans.length,
         itemBuilder: (context, index) {
-          final plan = state.plans[index];
+          final plan = displayPlans[index];
           return _PlanCard(plan: plan, scheme: scheme);
         },
       ),

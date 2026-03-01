@@ -19,7 +19,7 @@ class FeaturesPage extends StatelessWidget {
       child: CustomScrollView(
         slivers: <Widget>[
           // 课表区域标题
-          _sectionTitle(context, '课表区域'),
+          _sectionTitle(context, '教务服务'),
           // 课表区域卡片
           _cardGrid(context, _scheduleCards),
           // 生活助手标题
