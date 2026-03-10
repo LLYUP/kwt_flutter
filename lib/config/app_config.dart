@@ -36,7 +36,7 @@ class AppConfig {
   
   /// 应用基础信息
   static const String appName = '轻悦校园';
-  static const String appVersion = '3.7.1';
+  static const String appVersion = '3.7.2';
   static const String appDescription = '轻悦校园教务系统查询应用';
   
   /// GitHub 配置（用于检查更新）
@@ -170,4 +170,22 @@ class ApiEndpoints {
 
   // 培养方案
   static const String trainingPlan = '/jsxsd/pyfa/pyfa_query';
+
+  // 选课结果查询
+  static const String courseSelectionResults = '/jsxsd/xkgl/loadXsxkjgList';
+
+  // 消息通知
+  static const String messageNotifications = '/jsxsd/ggly/xxtz_query';
+
+  // 选课中心
+  static const String courseSelectionCenter = '/jsxsd/xsxk/xklc_list';
+  static const String mzlistCheck = '/jsxsd/xsxk/mzlist.do';
+  static const String enterCourseSelection = '/jsxsd/xsxk/newXsxkzx';
+  static const String courseSelectionBottom = '/jsxsd/xsxk/selectBottom';
+  static const String courseSelectionNum = '/jsxsd/xsxk/selectNum';
+  static const String electiveCourseList = '/jsxsd/xsxkkc/xsxkGgxxkxk';
+  static const String electiveCourseFormPage = '/jsxsd/xsxkkc/getGgxxk';
+  static const String exitCourseSelection = '/jsxsd/xsxk/xsxk_exit';
+  static const String selectCourse = '/jsxsd/xsxkkc/ggxxkxkOper';
+  static const String deselectCourse = '/jsxsd/xsxkjg/xstkOper';
 }

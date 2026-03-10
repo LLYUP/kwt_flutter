@@ -8,6 +8,9 @@ import 'package:kwt_flutter/services/api/grade_api.dart';
 import 'package:kwt_flutter/services/api/system_api.dart';
 import 'package:kwt_flutter/services/api/textbook_api.dart';
 import 'package:kwt_flutter/services/api/training_plan_api.dart';
+import 'package:kwt_flutter/services/api/course_selection_api.dart';
+import 'package:kwt_flutter/services/api/message_notification_api.dart';
+import 'package:kwt_flutter/services/api/course_selection_center_api.dart';
 
 export 'package:kwt_flutter/services/api/api_client.dart' show AuthExpiredException;
 
@@ -25,6 +28,9 @@ class KwtClient {
   late final SystemApi _systemApi;
   late final TextbookApi _textbookApi;
   late final TrainingPlanApi _trainingPlanApi;
+  late final CourseSelectionApi _courseSelectionApi;
+  late final MessageNotificationApi _messageNotificationApi;
+  late final CourseSelectionCenterApi _courseSelectionCenterApi;
 
   KwtClient._internal(this._apiClient) {
     _authApi = AuthApi(_apiClient);
@@ -33,6 +39,9 @@ class KwtClient {
     _systemApi = SystemApi(_apiClient);
     _textbookApi = TextbookApi(_apiClient);
     _trainingPlanApi = TrainingPlanApi(_apiClient);
+    _courseSelectionApi = CourseSelectionApi(_apiClient);
+    _messageNotificationApi = MessageNotificationApi(_apiClient);
+    _courseSelectionCenterApi = CourseSelectionCenterApi(_apiClient);
   }
 
   /// 创建带持久化 Cookie 存储的客户端
@@ -227,5 +236,90 @@ class KwtClient {
   /// 拉取培养方案
   Future<List<TrainingPlanEntry>> fetchTrainingPlan() {
     return _trainingPlanApi.fetchTrainingPlan();
+  }
+
+  /// 拉取选课结果
+  Future<List<CourseSelectionEntry>> fetchCourseSelectionResults({
+    required String termId,
+    String cxsj = 'skjg',
+  }) {
+    return _courseSelectionApi.fetchCourseSelectionResults(
+      termId: termId,
+      cxsj: cxsj,
+    );
+  }
+
+  /// 拉取消息通知
+  Future<List<MessageNotificationEntry>> fetchMessageNotifications() {
+    return _messageNotificationApi.fetchMessageNotifications();
+  }
+
+  /// 拉取选课轮次列表
+  Future<List<CourseSelectionRoundEntry>> fetchCourseSelectionRounds() {
+    return _courseSelectionCenterApi.fetchCourseSelectionRounds();
+  }
+
+  /// 选课前置检查
+  Future<bool> checkMzlist() {
+    return _courseSelectionCenterApi.checkMzlist();
+  }
+
+  /// 进入选课会话
+  Future<void> enterCourseSelection(String roundId) {
+    return _courseSelectionCenterApi.enterCourseSelection(roundId);
+  }
+
+  /// 动态获取通选课类别
+  Future<List<MapEntry<String, String>>> fetchCourseCategories(String roundId) {
+    return _courseSelectionCenterApi.fetchCourseCategories(roundId);
+  }
+
+  /// 获取可选公选课列表
+  Future<List<ElectiveCourseEntry>> fetchElectiveCourses({
+    required String roundId,
+    String courseName = '',
+    String teacher = '',
+    String categoryId = '',
+    String weekday = '',
+    String startPeriod = '',
+    String endPeriod = '',
+    bool filterFull = false,
+    bool filterConflict = true,
+    bool filterRestricted = true,
+    int page = 0,
+    int pageSize = 50,
+  }) {
+    return _courseSelectionCenterApi.fetchElectiveCourses(
+      roundId: roundId,
+      courseName: courseName,
+      teacher: teacher,
+      categoryId: categoryId,
+      weekday: weekday,
+      startPeriod: startPeriod,
+      endPeriod: endPeriod,
+      filterFull: filterFull,
+      filterConflict: filterConflict,
+      filterRestricted: filterRestricted,
+      page: page,
+      pageSize: pageSize,
+    );
+  }
+
+  /// 退出选课
+  Future<bool> exitCourseSelection() {
+    return _courseSelectionCenterApi.exitCourseSelection();
+  }
+
+  /// 选课
+  Future<Map<String, dynamic>> selectCourse({
+    required String jx0404id,
+    required String kcid,
+  }) {
+    return _courseSelectionCenterApi.selectCourse(jx0404id: jx0404id, kcid: kcid);
+  }
+
+  /// 退课
+  Future<Map<String, dynamic>> deselectCourse({required String jx0404id}) {
+    return _courseSelectionCenterApi.deselectCourse(jx0404id: jx0404id);
   }
 }

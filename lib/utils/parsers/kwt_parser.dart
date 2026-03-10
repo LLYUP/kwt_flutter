@@ -445,4 +445,115 @@ class KwtParser {
     }
     return result;
   }
+
+  /// 解析选课结果列表
+  static List<CourseSelectionEntry> parseCourseSelection(String html) {
+    final document = html_parser.parse(html);
+    final table = document.querySelector('table.layui-table');
+    if (table == null) return [];
+
+    final rows = table.querySelectorAll('tr');
+    final result = <CourseSelectionEntry>[];
+
+    // 首行是表头
+    for (int i = 1; i < rows.length; i++) {
+      final cells = rows[i].querySelectorAll('td');
+      // 至少需8列
+      if (cells.length < 8) continue;
+
+      result.add(CourseSelectionEntry(
+        index: cells[0].text.trim(),
+        courseName: cells[1].text.trim(),
+        courseCode: cells[2].text.trim(),
+        teacher: cells[3].text.trim(),
+        totalHours: cells[4].text.trim(),
+        credits: cells[5].text.trim(),
+        courseAttr: cells[6].text.trim(),
+        courseNature: cells[7].text.trim(),
+      ));
+    }
+    return result;
+  }
+
+  /// 解析消息通知列表
+  static List<MessageNotificationEntry> parseMessageNotifications(String html) {
+    final document = html_parser.parse(html);
+    final table = document.querySelector('#dataList') ?? document.querySelector('table.layui-table');
+    if (table == null) return [];
+
+    final rows = table.querySelectorAll('tr');
+    final result = <MessageNotificationEntry>[];
+
+    // 首行是表头
+    for (int i = 1; i < rows.length; i++) {
+      final cells = rows[i].querySelectorAll('td');
+      if (cells.length < 4) continue;
+
+      result.add(MessageNotificationEntry(
+        index: cells[0].text.trim(),
+        businessName: cells[1].text.trim(),
+        content: cells[2].text.trim(),
+        pushTime: cells[3].text.trim(),
+      ));
+    }
+    return result;
+  }
+
+  /// 解析选课轮次列表
+  static List<CourseSelectionRoundEntry> parseCourseSelectionRounds(String html) {
+    final document = html_parser.parse(html);
+    final table = document.querySelector('table');
+    if (table == null) return [];
+
+    final rows = table.querySelectorAll('tbody tr');
+    final result = <CourseSelectionRoundEntry>[];
+
+    for (final row in rows) {
+      final cells = row.querySelectorAll('td');
+      if (cells.length < 4) continue;
+
+      // 解析 jrxk 参数: onclick="jrxk('1','ID','0')"
+      String p1 = '', p2 = '', p3 = '';
+      final span = cells[3].querySelector('span[onclick]');
+      if (span != null) {
+        final onclick = span.attributes['onclick'] ?? '';
+        final match = RegExp(r"jrxk\('([^']*)','([^']*)','([^']*)'\)").firstMatch(onclick);
+        if (match != null) {
+          p1 = match.group(1) ?? '';
+          p2 = match.group(2) ?? '';
+          p3 = match.group(3) ?? '';
+        }
+      }
+
+      result.add(CourseSelectionRoundEntry(
+        term: cells[0].text.trim(),
+        name: cells[1].text.trim(),
+        timeRange: cells[2].text.trim(),
+        jrxkParam1: p1,
+        jrxkParam2: p2,
+        jrxkParam3: p3,
+      ));
+    }
+    return result;
+  }
+
+  /// 从 selectBottom 页面解析通选课类别下拉选项
+  static List<MapEntry<String, String>> parseCourseCategories(String html) {
+    final document = html_parser.parse(html);
+    final select = document.querySelector('select#szjylb');
+    if (select == null) return [];
+
+    final result = <MapEntry<String, String>>[
+      const MapEntry('', '全部类别'),
+    ];
+
+    final options = select.querySelectorAll('option');
+    for (final opt in options) {
+      final value = opt.attributes['value'] ?? '';
+      final text = opt.text.trim();
+      if (value.isEmpty) continue; // 跳过 "--所有课程--"
+      result.add(MapEntry(value, text));
+    }
+    return result;
+  }
 }

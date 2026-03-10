@@ -133,3 +133,131 @@ class TrainingPlanEntry {
   final String isExam;        // 是否考试
 }
 
+// 选课结果条目模型
+class CourseSelectionEntry {
+  CourseSelectionEntry({
+    required this.index,
+    required this.courseName,
+    required this.courseCode,
+    required this.teacher,
+    required this.totalHours,
+    required this.credits,
+    required this.courseAttr,
+    required this.courseNature,
+  });
+
+  final String index;         // 序号
+  final String courseName;    // 课程名称
+  final String courseCode;    // 课程编号
+  final String teacher;       // 上课教师
+  final String totalHours;    // 总学时
+  final String credits;       // 学分
+  final String courseAttr;    // 课程属性
+  final String courseNature;  // 课程性质
+}
+
+// 消息通知条目模型
+class MessageNotificationEntry {
+  MessageNotificationEntry({
+    required this.index,
+    required this.businessName,
+    required this.content,
+    required this.pushTime,
+  });
+
+  final String index;         // 序号
+  final String businessName;  // 业务名称
+  final String content;       // 消息内容
+  final String pushTime;      // 推送时间
+}
+
+// 选课轮次条目模型
+class CourseSelectionRoundEntry {
+  CourseSelectionRoundEntry({
+    required this.term,
+    required this.name,
+    required this.timeRange,
+    this.jrxkParam1 = '',
+    this.jrxkParam2 = '',
+    this.jrxkParam3 = '',
+  });
+
+  final String term;          // 学年学期
+  final String name;          // 选课名称
+  final String timeRange;     // 选课时间
+  final String jrxkParam1;   // jrxk 参数1
+  final String jrxkParam2;   // jrxk 参数2 (选课轮次ID)
+  final String jrxkParam3;   // jrxk 参数3
+}
+
+// 可选课程条目模型（选课中心 JSON API 返回）
+class ElectiveCourseEntry {
+  ElectiveCourseEntry({
+    required this.courseCode,
+    required this.courseName,
+    required this.credits,
+    required this.totalHours,
+    required this.teacher,
+    required this.classTime,
+    required this.classLocation,
+    required this.campus,
+    required this.enrolledCount,
+    required this.remainingCount,
+    required this.maxCapacity,
+    required this.category,
+    required this.courseType,
+    required this.isNetworkCourse,
+    required this.jx0404id,
+    required this.jx02id,
+    this.isSelected = false,
+  });
+
+  final String courseCode;      // 课程编号 (kch)
+  final String courseName;      // 课程名称 (kcmc)
+  final double credits;         // 学分 (xf)
+  final int totalHours;         // 总学时 (zxs)
+  final String teacher;         // 授课教师 (skls)
+  final String classTime;       // 上课时间 (sksj)
+  final String classLocation;   // 上课地点 (skdd)
+  final String campus;          // 校区 (xqmc)
+  final int enrolledCount;      // 已选人数 (xkrs)
+  final int remainingCount;     // 剩余人数 (syrs)
+  final int maxCapacity;        // 最大容量 (pkrs)
+  final String category;        // 课程分类 (szkcflmc)
+  final String courseType;      // 课程性质 (kcxzmc)
+  final bool isNetworkCourse;   // 是否网络课
+  final String jx0404id;        // 选课操作 ID
+  final String jx02id;          // 课程方案 ID
+  final bool isSelected;        // 是否已选 (xkzt=1)
+
+  factory ElectiveCourseEntry.fromJson(Map<String, dynamic> json) {
+    final syrsRaw = json['syrs'];
+    int syrs = 0;
+    if (syrsRaw is int) {
+      syrs = syrsRaw;
+    } else if (syrsRaw is String) {
+      syrs = int.tryParse(syrsRaw) ?? 0;
+    }
+
+    return ElectiveCourseEntry(
+      courseCode: json['kch']?.toString() ?? '',
+      courseName: json['kcmc']?.toString() ?? '',
+      credits: (json['xf'] is num) ? (json['xf'] as num).toDouble() : double.tryParse(json['xf']?.toString() ?? '0') ?? 0,
+      totalHours: (json['zxs'] is int) ? json['zxs'] : int.tryParse(json['zxs']?.toString() ?? '0') ?? 0,
+      teacher: (json['skls']?.toString() ?? '').replaceAll('&nbsp;', '').trim(),
+      classTime: (json['sksj']?.toString() ?? '').replaceAll('&nbsp;', '').trim(),
+      classLocation: (json['skdd']?.toString() ?? '').replaceAll('&nbsp;', '').trim(),
+      campus: json['xqmc']?.toString() ?? '',
+      enrolledCount: (json['xkrs'] is int) ? json['xkrs'] : int.tryParse(json['xkrs']?.toString() ?? '0') ?? 0,
+      remainingCount: syrs,
+      maxCapacity: (json['pkrs'] is int) ? json['pkrs'] : int.tryParse(json['pkrs']?.toString() ?? '0') ?? 0,
+      category: json['szkcflmc']?.toString() ?? '',
+      courseType: json['kcxzmc']?.toString() ?? '',
+      isNetworkCourse: json['isnetworkcourse'] == '是',
+      jx0404id: json['jx0404id']?.toString() ?? '',
+      jx02id: json['jx02id']?.toString() ?? '',
+      isSelected: json['xkzt']?.toString() != null && json['xkzt'].toString() != '0' && json['xkzt'].toString().isNotEmpty,
+    );
+  }
+}
+

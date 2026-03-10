@@ -8,6 +8,9 @@ import 'package:kwt_flutter/pages/academic_calendar_page.dart';
 import 'package:kwt_flutter/presentation/textbook/pages/textbook_page.dart';
 import 'package:kwt_flutter/presentation/timetable/pages/classroom_timetable_page.dart';
 import 'package:kwt_flutter/presentation/training_plan/pages/training_plan_page.dart';
+import 'package:kwt_flutter/presentation/course_selection/pages/course_selection_page.dart';
+import 'package:kwt_flutter/presentation/message_notification/pages/message_notification_page.dart';
+import 'package:kwt_flutter/presentation/course_selection_center/pages/course_selection_center_page.dart';
 
 /// 功能入口页
 class FeaturesPage extends StatelessWidget {
@@ -44,6 +47,9 @@ class FeaturesPage extends StatelessWidget {
     {'title': '等级考试', 'icon': Icons.assessment, 'page': const LevelExamPage()},
     {'title': '培养方案', 'icon': Icons.account_tree, 'page': const TrainingPlanPage()},
     {'title': '教材信息', 'icon': Icons.menu_book, 'page': const TextbookPage()},
+    {'title': '选课结果', 'icon': Icons.fact_check, 'page': const CourseSelectionPage()},
+    {'title': '消息通知', 'icon': Icons.notifications, 'page': const MessageNotificationPage()},
+    {'title': '选课中心', 'icon': Icons.app_registration, 'page': const CourseSelectionCenterPage()},
   ];
 
   /// 生活助手功能列表
