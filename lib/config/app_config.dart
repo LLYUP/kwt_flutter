@@ -36,7 +36,7 @@ class AppConfig {
   
   /// 应用基础信息
   static const String appName = '轻悦校园';
-  static const String appVersion = '3.7.2';
+  static const String appVersion = '3.7.3';
   static const String appDescription = '轻悦校园教务系统查询应用';
   
   /// GitHub 配置（用于检查更新）
@@ -144,6 +144,7 @@ class ApiEndpoints {
   // 认证相关
   static const String captcha = '/jsxsd/verifycode.servlet';
   static const String login = '/jsxsd/xk/LoginToXk';
+  static const String forgotPassword = '/jsxsd/system/newResetPasswd.do';
   static const String profile = '/jsxsd/framework/xsMainV.htmlx';
   
   // 课表相关

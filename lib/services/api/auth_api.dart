@@ -59,6 +59,72 @@ class AuthApi {
     return !failed;
   }
 
+  Future<Map<String, dynamic>> resetPassword({
+    required String account,
+    required String idCard,
+    required String captcha,
+  }) async {
+    final encoded = base64Encode(utf8.encode(account));
+    final params = {
+      'encoded': encoded,
+      'passwordfindmethod': '0',
+      'account': account,
+      'sfzjh': idCard,
+      'RANDOMCODE': captcha,
+      'pwdAnswer1': '',
+      'pwdAnswer2': '',
+      'pwdAnswer3': '',
+      'pwdAnswer4': '',
+      'email': '',
+    };
+    
+    try {
+      final response = await dio.post(
+        ApiEndpoints.forgotPassword,
+        queryParameters: {'randomCode': captcha},
+        data: params,
+        options: Options(
+          responseType: ResponseType.bytes,
+          contentType: Headers.formUrlEncodedContentType,
+          headers: {'Referer': '$baseUrl/'},
+          validateStatus: (status) => true,
+        ),
+      );
+      
+      final html = ResponseHelper.decodeHtmlResponse(response);
+      
+      final bool isSuccess = html.contains('密码重置成功') || 
+                             html.contains('重置成功') || 
+                             html.contains('success: true') ||
+                             html.contains('success":true') ||
+                             html.contains('success": true');
+      
+      String msg = '';
+      
+      // Try extracting message via regex because unquoted keys like {message: "..."} 
+      final msgMatch = RegExp('message\\s*:\\s*["\']([^"\']+)["\']').firstMatch(html) 
+                    ?? RegExp('"message"\\s*:\\s*["\']([^"\']+)["\']').firstMatch(html);
+                    
+      if (msgMatch != null) {
+        msg = msgMatch.group(1)!;
+      } else if (isSuccess) {
+        msg = '密码已成功重置';
+      } else {
+        final alertMatch = RegExp(r"alert\(['\u0022](.*?)['\u0022]\)").firstMatch(html);
+        if (alertMatch != null) {
+          msg = alertMatch.group(1)!;
+        } else {
+          msg = html.contains('验证') ? '验证码错误、账号或身份证号不存在' : '密码重置请求已发送，请检查结果。';
+        }
+      }
+
+      return {'success': isSuccess, 'message': msg};
+    } catch (e) {
+      print('--- [DEBUG] resetPassword HTTP catch exception: $e ---');
+      return {'success': false, 'message': '网络请求失败: $e'};
+    }
+  }
+
   Future<void> logout() async {
     try {
       await dio.post(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kwt_flutter/presentation/auth/controllers/login_controller.dart';
+import 'package:kwt_flutter/presentation/auth/pages/forgot_password_page.dart';
 import 'package:kwt_flutter/pages/tab_scaffold.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -255,6 +256,25 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     }),
                     const SizedBox(height: 16),
                   ],
+                  // Forgot Password Link
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: state.isBusy
+                          ? null
+                          : () => Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
+                              ),
+                      child: Text(
+                        '忘记密码？',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   
                   // Submit Button
                   SizedBox(

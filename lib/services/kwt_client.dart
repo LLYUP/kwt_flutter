@@ -68,6 +68,19 @@ class KwtClient {
     );
   }
 
+  /// 找回密码/重置密码
+  Future<Map<String, dynamic>> resetPassword({
+    required String account,
+    required String idCard,
+    required String captcha,
+  }) {
+    return _authApi.resetPassword(
+      account: account,
+      idCard: idCard,
+      captcha: captcha,
+    );
+  }
+
   /// 退出登录
   Future<void> logout() => _authApi.logout();
 
