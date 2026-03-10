@@ -332,6 +332,7 @@ class _CourseSelectionDetailPageState extends ConsumerState<CourseSelectionDetai
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: ExpansionTile(
+        key: PageStorageKey('course_${course.jx02id}_${course.jx0404id}'),
         tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         leading: CircleAvatar(

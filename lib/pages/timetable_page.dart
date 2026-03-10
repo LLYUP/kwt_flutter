@@ -66,10 +66,21 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
     final start = DateTime.tryParse(startDate);
     if (start == null) return 1;
     final now = DateTime.now();
-    final diff = now.difference(DateTime(start.year, start.month, start.day)).inDays;
-    if (diff < 0) return 1;
-    final week = (diff ~/ 7) + 1;
-    return week < 1 ? 1 : week;
+    
+    // 找到开学日期的周一 00:00
+    final startMonday = DateTime(start.year, start.month, start.day)
+        .subtract(Duration(days: start.weekday - 1));
+        
+    // 找到今天周一 00:00
+    final nowMonday = DateTime(now.year, now.month, now.day)
+        .subtract(Duration(days: now.weekday - 1));
+        
+    // 两个周一相差的天数除以7，就是经历的周数
+    final diffDays = nowMonday.difference(startMonday).inDays;
+    
+    if (diffDays < 0) return 1; // 还没开学，显示第一周
+    
+    return (diffDays ~/ 7) + 1;
   }
 
   Future<void> _load() async {
