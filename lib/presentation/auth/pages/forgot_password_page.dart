@@ -50,8 +50,8 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                Navigator.of(context).pop(); // Go back to login
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
               },
               child: const Text('返回登录'),
             )

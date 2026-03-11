@@ -14,10 +14,7 @@ import 'package:kwt_flutter/services/api/course_selection_center_api.dart';
 
 export 'package:kwt_flutter/services/api/api_client.dart' show AuthExpiredException;
 
-/// 轻悦校园后端客户端 (Facade 模式重构)
-/// 
-/// 内部通过组合 ApiClient 和 各个业务 Api 类来提供一致的接口，
-/// 保持向下兼容，便于后续 UI 层逐步迁移到直接使用对应的 Api 或 Repository。
+/// 轻悦校园后端客户端 (Facade)
 class KwtClient {
   static const String defaultTimeMode = AppConfig.defaultTimeMode;
 
@@ -78,6 +75,19 @@ class KwtClient {
       account: account,
       idCard: idCard,
       captcha: captcha,
+    );
+  }
+
+  /// 修改密码
+  Future<Map<String, dynamic>> changePassword({
+    required String account,
+    required String oldPassword,
+    required String newPassword,
+  }) {
+    return _authApi.changePassword(
+      account: account,
+      oldPassword: oldPassword,
+      newPassword: newPassword,
     );
   }
 

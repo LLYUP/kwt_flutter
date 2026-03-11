@@ -27,9 +27,16 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
   List<TimetableEntry> _timetable = const [];
   int _weekNo = 1;
 
+  late final PageController _pageController;
+  final int _initialPage = 500;
+  late int _currentPageIndex;
+  bool _isReverting = false;
+
   @override
   void initState() {
     super.initState();
+    _currentPageIndex = _initialPage;
+    _pageController = PageController(initialPage: _initialPage);
     _initFromSettings();
   }
 
@@ -56,6 +63,7 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
 
   @override
   void dispose() {
+    _pageController.dispose();
     _termCtrl.dispose();
     _dateCtrl.dispose();
     _timeModeCtrl.dispose();
@@ -109,30 +117,50 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
 
   @override
   Widget build(BuildContext context) {
-    final monday = _calcMonday();
-    final days = List.generate(7, (i) => monday.add(Duration(days: i)));
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: SafeArea(
-        child: _error != null
-            ? AppErrorWidget(message: _error!, onRetry: _load)
-            : _busy
-                ? const AppLoadingWidget()
-                : CustomScrollView(
-                    slivers: [
-                      _weekTitleSliver(days, scheme),
-                      _weekdayHeaderSliver(days, scheme),
-                      _timetableGridSliver(scheme),
-                      const SliverToBoxAdapter(child: SizedBox(height: 32)),
-                    ],
-                  ),
+        child: PageView.builder(
+          controller: _pageController,
+          onPageChanged: (index) {
+            final delta = index - _currentPageIndex;
+            _currentPageIndex = index;
+            _changeWeek(delta);
+          },
+          itemBuilder: (context, index) {
+            final delta = index - _currentPageIndex;
+            final virtualWeekNo = _weekNo + delta;
+            
+            final currentMonday = _calcMonday();
+            final virtualMonday = currentMonday.add(Duration(days: delta * 7));
+            final days = List.generate(7, (i) => virtualMonday.add(Duration(days: i)));
+
+            return CustomScrollView(
+              slivers: [
+                _weekTitleSliver(days, scheme, virtualWeekNo),
+                _weekdayHeaderSliver(days, scheme),
+                if (index == _currentPageIndex) ...[
+                  if (_error != null)
+                    SliverFillRemaining(child: AppErrorWidget(message: _error!, onRetry: _load))
+                  else if (_busy)
+                    SliverFillRemaining(child: const AppLoadingWidget())
+                  else
+                    _timetableGridSliver(scheme),
+                  const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                ] else ...[
+                  const SliverFillRemaining(child: Center(child: CircularProgressIndicator())),
+                ],
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 
   /// 周次标题
-  Widget _weekTitleSliver(List<DateTime> days, ColorScheme scheme) {
+  Widget _weekTitleSliver(List<DateTime> days, ColorScheme scheme, int weekNo) {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -145,7 +173,7 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Text(
-                  '第$_weekNo周',
+                  '第$weekNo周',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -444,6 +472,33 @@ class _TimetablePageState extends ConsumerState<TimetablePage> {
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Text('$label：$value'),
     );
+  }
+
+  void _changeWeek(int delta) {
+    if (_isReverting) return;
+    
+    final newWeek = _weekNo + delta;
+    if (newWeek < 1 || newWeek > 25) {
+      _isReverting = true;
+      final previousPage = _currentPageIndex - delta;
+      _currentPageIndex = previousPage;
+      _pageController.animateToPage(
+        previousPage,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      ).then((_) => _isReverting = false);
+      return;
+    }
+
+    final current = DateTime.tryParse(_dateCtrl.text.trim());
+    if (current != null) {
+      final next = current.add(Duration(days: delta * 7));
+      setState(() {
+        _weekNo = newWeek;
+        _dateCtrl.text = next.toIso8601String().substring(0, 10);
+      });
+      _load();
+    }
   }
 
   Future<void> _pickWeek() async {

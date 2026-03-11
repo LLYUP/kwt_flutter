@@ -114,6 +114,30 @@ class ProfileController extends StateNotifier<ProfileState> {
     _ref.read(kwtClientProvider.notifier).state = null;
     state = state.copyWith(isLoggedIn: false, studentId: null, studentName: null);
   }
+
+  Future<Map<String, dynamic>> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final client = _ref.read(kwtClientProvider);
+    if (client == null || state.studentId == null) {
+      return {'success': false, 'message': '用户未登录或状态异常'};
+    }
+    try {
+      final res = await client.changePassword(
+        account: state.studentId!,
+        oldPassword: oldPassword,
+        newPassword: newPassword,
+      );
+      if (res['success'] == true) {
+        // 修改密码成功后系统自动下线了，需要清除本地状态
+        await logout();
+      }
+      return res;
+    } catch (e) {
+      return {'success': false, 'message': '修改密码异常: $e'};
+    }
+  }
 }
 
 final profileControllerProvider = StateNotifierProvider.autoDispose<ProfileController, ProfileState>((ref) {

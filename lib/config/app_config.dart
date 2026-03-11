@@ -10,7 +10,8 @@ enum AppEnvironment {
 /// 网络环境配置
 enum NetworkEnvironment {
   intranet('校园网环境', 'http://10.110.225.76'),
-  internet('外网环境', 'http://222.187.129.200:51234');
+  internet('外网环境', 'http://222.187.129.200:51234'),
+  custom('专属节点', '');
 
   const NetworkEnvironment(this.displayName, this.baseUrl);
   
@@ -20,7 +21,6 @@ enum NetworkEnvironment {
 
 /// 应用配置管理
 class AppConfig {
-  // 私有构造函数
   AppConfig._();
   
   /// 当前应用环境
@@ -36,7 +36,7 @@ class AppConfig {
   
   /// 应用基础信息
   static const String appName = '轻悦校园';
-  static const String appVersion = '3.7.3';
+  static const String appVersion = '3.7.4';
   static const String appDescription = '轻悦校园教务系统查询应用';
   
   /// GitHub 配置（用于检查更新）
@@ -65,13 +65,10 @@ class AppConfig {
     final month = now.month;
 
     if (month >= 8) {
-      // 8月(及之后)进入秋季学期
       return '$year-${year + 1}-1';
     } else if (month <= 1) {
-      // 1月还在上一年的秋季学期
       return '${year - 1}-$year-1';
     } else {
-      // 2月~7月是春季学期
       return '${year - 1}-$year-2';
     }
   }
@@ -116,6 +113,8 @@ class AppConfig {
     switch (key) {
       case 'internet':
         return NetworkEnvironment.internet;
+      case 'custom':
+        return NetworkEnvironment.custom;
       case 'intranet':
       default:
         return NetworkEnvironment.intranet;
@@ -141,23 +140,20 @@ class AppConfig {
 
 /// API 端点配置
 class ApiEndpoints {
-  // 认证相关
   static const String captcha = '/jsxsd/verifycode.servlet';
   static const String login = '/jsxsd/xk/LoginToXk';
   static const String forgotPassword = '/jsxsd/system/newResetPasswd.do';
+  static const String changePassword = '/jsxsd/grsz/grsz_xgmm_beg.do';
   static const String profile = '/jsxsd/framework/xsMainV.htmlx';
   
-  // 课表相关
   static const String personalTimetable = '/jsxsd/framework/mainV_index_loadkb.htmlx';
   static const String classTimetable = '/jsxsd/kbcx/kbxx_xzb_ifr';
   static const String searchClasses = '/jsxsd/kbcx/querySkbj';
   
-  // 成绩相关
   static const String grades = '/jsxsd/kscj/cjcx_list';
   static const String gradesQuery = '/jsxsd/kscj/cjcx_query';
   static const String examLevel = '/jsxsd/kscj/djkscj_list';
   
-  // 系统信息
   static const String termOptions = '/jsxsd/kscj/cjcx_query';
   static const String termOptionsFallback1 = '/jsxsd/kscj/cjcx_list';
   static const String termOptionsFallback2 = '/jsxsd/kbcx/kbxx_xzb';
@@ -178,7 +174,6 @@ class ApiEndpoints {
   // 消息通知
   static const String messageNotifications = '/jsxsd/ggly/xxtz_query';
 
-  // 选课中心
   static const String courseSelectionCenter = '/jsxsd/xsxk/xklc_list';
   static const String mzlistCheck = '/jsxsd/xsxk/mzlist.do';
   static const String enterCourseSelection = '/jsxsd/xsxk/newXsxkzx';

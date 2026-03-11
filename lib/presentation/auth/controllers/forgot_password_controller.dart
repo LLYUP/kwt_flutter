@@ -45,9 +45,14 @@ class ForgotPasswordController extends StateNotifier<ForgotPasswordState> {
 
   Future<void> _initClient() async {
     final loginState = _ref.read(loginControllerProvider);
-    final serverUrl = loginState.selectedNetworkEnvironment == 'internet'
-        ? NetworkEnvironment.internet.baseUrl
-        : NetworkEnvironment.intranet.baseUrl;
+    String serverUrl;
+    if (loginState.selectedNetworkEnvironment == 'internet') {
+      serverUrl = NetworkEnvironment.internet.baseUrl;
+    } else if (loginState.selectedNetworkEnvironment == 'custom') {
+      serverUrl = loginState.customServerUrl ?? '';
+    } else {
+      serverUrl = NetworkEnvironment.intranet.baseUrl;
+    }
         
     _tempClient = await KwtClient.createPersisted(baseUrl: serverUrl);
     await fetchCaptcha();

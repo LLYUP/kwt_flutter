@@ -8,7 +8,6 @@ import 'dart:io';
 import 'dart:convert';
 
 
-/// 登录状态失效异常
 class AuthExpiredException implements Exception {
   AuthExpiredException([this.message = '登录已失效']);
   final String message;
@@ -16,7 +15,6 @@ class AuthExpiredException implements Exception {
   String toString() => message;
 }
 
-/// 核心网络客户端，仅负责通信、拦截器和 Cookie 管理
 class ApiClient {
   final Dio dio;
   final CookieJar cookieJar;
@@ -37,7 +35,6 @@ class ApiClient {
     this.dio.interceptors.add(_buildUnifiedInterceptor());
   }
 
-  /// 创建带持久化 Cookie 存储的客户端
   static Future<ApiClient> createPersisted({required String baseUrl}) async {
     final dir = await getApplicationSupportDirectory();
     final cookieDir = Directory('${dir.path}/cookies');
@@ -46,7 +43,6 @@ class ApiClient {
     return ApiClient(cookieJar: jar, baseUrl: baseUrl);
   }
 
-  /// 简单判断返回的 HTML 是否像登录页/未登录提示
   bool _htmlLooksLikeLoginPage(String html) {
     final lc = html.toLowerCase();
     if (html.contains('请先登录系统')) return true;
@@ -57,7 +53,6 @@ class ApiClient {
     return false;
   }
 
-  /// 统一网络拦截器
   Interceptor _buildUnifiedInterceptor() {
     return InterceptorsWrapper(
       onRequest: (options, handler) {
@@ -122,7 +117,6 @@ class ApiClient {
     );
   }
 
-  /// 清除本地 Cookie
   Future<void> clearCookies() async {
     try {
       await cookieJar.deleteAll();

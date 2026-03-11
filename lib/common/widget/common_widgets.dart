@@ -1,8 +1,6 @@
-// 通用 UI 组件：加载、错误、空状态、搜索栏（使用主题色）
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
-/// 统一的加载态组件（使用骨架屏动画）
 class AppLoadingWidget extends StatelessWidget {
   const AppLoadingWidget({super.key, this.message = '加载中...', this.itemCount = 6});
   final String message;
@@ -32,7 +30,6 @@ class AppLoadingWidget extends StatelessWidget {
   }
 }
 
-/// 错误提示界面（带重试功能）
 class AppErrorWidget extends StatelessWidget {
   const AppErrorWidget({super.key, required this.message, this.onRetry});
   final String message;
@@ -92,7 +89,6 @@ class AppErrorWidget extends StatelessWidget {
   }
 }
 
-/// 空数据占位组件
 class AppEmptyWidget extends StatelessWidget {
   const AppEmptyWidget({
     super.key,
@@ -146,7 +142,6 @@ class AppEmptyWidget extends StatelessWidget {
   }
 }
 
-/// 统一搜索栏组件
 class AppSearchBar extends StatelessWidget {
   const AppSearchBar({
     super.key,

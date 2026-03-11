@@ -1,4 +1,3 @@
-// 应用入口与全局路由配置：负责初始化主题、本地化、登录态判断与页面跳转
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,7 +11,6 @@ import 'package:kwt_flutter/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // 预初始化 SharedPreferences 缓存
   await SettingsService.init();
   runApp(
     const ProviderScope(
@@ -68,7 +66,6 @@ class _AppBootstrapState extends ConsumerState<_AppBootstrap> {
       final serverUrl = await settings.getCurrentServerUrl();
       final client = await KwtClient.createPersisted(baseUrl: serverUrl);
       if (mounted) {
-        // 同步到 Riverpod 中
         ref.read(kwtClientProvider.notifier).state = client;
         
         Navigator.of(context).pushReplacement(

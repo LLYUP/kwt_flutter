@@ -1,8 +1,7 @@
-// 应用主题：统一配色、组件风格与间距，支持亮色/暗色主题
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const _seed = Color(0xFF6C5AE6); // 柔和紫色
+  static const _seed = Color(0xFF6C5AE6);
 
   static ThemeData light() {
     final colorScheme = ColorScheme.fromSeed(

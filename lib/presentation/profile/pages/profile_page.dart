@@ -25,6 +25,147 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     super.dispose();
   }
 
+  void _showChangePasswordDialog() {
+    final state = ref.read(profileControllerProvider);
+    if (!state.isLoggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请先登录')));
+      return;
+    }
+
+    final oldPassCtrl = TextEditingController();
+    final newPassCtrl = TextEditingController();
+    final confirmPassCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('修改密码'),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        '密码必须至少8位，包含大写字母、小写字母、数字和特殊字符。修改成功后需重新登录。',
+                        style: TextStyle(color: Colors.red, fontSize: 13),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: oldPassCtrl,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: '原密码',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return '请输入原密码';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: newPassCtrl,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: '新密码',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return '请输入新密码';
+                          if (value.length < 8) return '密码长度必须大于8位';
+                          if (!RegExp(r'[A-Z]').hasMatch(value)) return '必须包含大写字母';
+                          if (!RegExp(r'[a-z]').hasMatch(value)) return '必须包含小写字母';
+                          if (!RegExp(r'[0-9]').hasMatch(value)) return '必须包含数字';
+                          if (!RegExp(r"[~!@#$%^&*()_+{}|:<>?`=\-\[\]\\;',./]").hasMatch(value)) {
+                            return '必须包含特殊字符';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: confirmPassCtrl,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: '确认新密码',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value != newPassCtrl.text) {
+                            return '两次输入的密码不一致';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.of(context).pop(),
+                  child: const Text('取消'),
+                ),
+                FilledButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          if (formKey.currentState!.validate()) {
+                            setDialogState(() => isSubmitting = true);
+                            final controller = ref.read(profileControllerProvider.notifier);
+                            final res = await controller.changePassword(
+                              oldPassword: oldPassCtrl.text,
+                              newPassword: newPassCtrl.text,
+                            );
+                            setDialogState(() => isSubmitting = false);
+                            
+                            if (!context.mounted) return;
+                            
+                            if (res['success'] == true) {
+                              Navigator.of(context).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(res['message'] ?? '修改成功，请重新登录'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(builder: (_) => const LoginPage()),
+                                (route) => false,
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(res['message'] ?? '修改失败'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('确认修改'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildTermDropdown() {
     final state = ref.watch(profileControllerProvider);
     final controller = ref.read(profileControllerProvider.notifier);
@@ -222,6 +363,18 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   ),
                 );
               },
+          ),
+          ListTile(
+            leading: const Icon(Icons.password_outlined),
+            title: const Text('修改密码'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              if (state.isLoggedIn) {
+                _showChangePasswordDialog();
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请先登录')));
+              }
+            },
           ),
           ListTile(
             leading: const Icon(Icons.login_outlined),

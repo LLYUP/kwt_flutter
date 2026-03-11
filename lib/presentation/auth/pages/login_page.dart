@@ -15,6 +15,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _userCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _codeCtrl = TextEditingController();
+  final _customUrlCtrl = TextEditingController();
   bool _obscurePassword = true;
 
   @override
@@ -22,6 +23,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     _userCtrl.dispose();
     _passCtrl.dispose();
     _codeCtrl.dispose();
+    _customUrlCtrl.dispose();
     super.dispose();
   }
 
@@ -33,7 +35,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
 
     if (success && mounted) {
-
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const TabScaffold()),
         (route) => false,
@@ -41,15 +42,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
-    // 监听状态改变时，同步 Controller 中的历史账密到 TextField（仅初始化一次）
     ref.listen<LoginState>(loginControllerProvider, (previous, next) {
       if (previous?.studentId == null && next.studentId != null && _userCtrl.text.isEmpty) {
         _userCtrl.text = next.studentId!;
       }
       if (previous?.password == null && next.password != null && _passCtrl.text.isEmpty) {
         _passCtrl.text = next.password!;
+      }
+      if (previous?.customServerUrl == null && next.customServerUrl != null && _customUrlCtrl.text.isEmpty) {
+        _customUrlCtrl.text = next.customServerUrl!;
+      }
+
+      if (previous?.captcha != next.captcha && next.captcha != null) {
+        _codeCtrl.clear();
       }
     });
 
@@ -93,8 +101,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-                    
-                  // Network Selection
                   Container(
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -112,6 +118,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       items: const [
                         DropdownMenuItem(value: 'intranet', child: Text('校园网')),
                         DropdownMenuItem(value: 'internet', child: Text('外网')),
+                        DropdownMenuItem(value: 'custom', child: Text('专属节点')),
                       ],
                       onChanged: (value) {
                         if (value != null) controller.changeNetworkEnvironment(value);
@@ -120,7 +127,28 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                   const SizedBox(height: 16),
                   
-                  // Username
+                  if (state.selectedNetworkEnvironment == 'custom') ...[
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                      ),
+                      child: TextField(
+                        controller: _customUrlCtrl,
+                        decoration: InputDecoration(
+                          labelText: '专属节点服务器地址',
+                          hintText: 'http://...',
+                          prefixIcon: Icon(Icons.link, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        ),
+                        onChanged: (value) => controller.changeCustomServerUrl(value.trim()),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  
                   Container(
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -138,8 +166,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
-                  // Password
                   Container(
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -166,7 +192,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Remember Password checkbox
                   Row(
                     children: [
                       Checkbox(
@@ -180,8 +205,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  
-                  // Captcha
                   Row(
                     children: [
                       Expanded(
@@ -231,8 +254,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  
-                  // Error Box
                   if (state.error != null) ...[
                     Builder(builder: (context) {
                       final cs = Theme.of(context).colorScheme;
@@ -256,7 +277,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     }),
                     const SizedBox(height: 16),
                   ],
-                  // Forgot Password Link
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
@@ -275,8 +295,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
-                  // Submit Button
                   SizedBox(
                     height: 56,
                     child: ElevatedButton(

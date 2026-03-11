@@ -5,7 +5,6 @@ import 'package:kwt_flutter/presentation/timetable/controllers/class_timetable_c
 import 'package:kwt_flutter/utils/timetable_utils.dart';
 import 'package:kwt_flutter/common/widget/common_widgets.dart';
 
-/// 班级课表页（对齐 schedule-getx 的 all_course 页面风格）
 class ClassTimetablePage extends ConsumerStatefulWidget {
   const ClassTimetablePage({super.key});
 
@@ -47,7 +46,6 @@ class _ClassTimetablePageState extends ConsumerState<ClassTimetablePage> {
       appBar: AppBar(
         title: const Text('班级课表'),
         actions: [
-          // 学期选择（对齐 schedule-getx 的 AppBar action）
           if (state.termOptions.isNotEmpty)
             PopupMenuButton<String>(
               icon: Icon(Icons.select_all_rounded, color: scheme.onSurface),
@@ -73,20 +71,15 @@ class _ClassTimetablePageState extends ConsumerState<ClassTimetablePage> {
                 )
               : CustomScrollView(
                   slivers: [
-                    // 班级输入区域
                     _classInputWidget(state, controller, scheme),
-                    // 课表网格
                     if (state.timetable.isNotEmpty) _gridWidget(state),
-                    // 空状态
                     if (state.timetable.isEmpty && !state.isBusy) _emptyWidget(),
-                    // 底部间距
                     const SliverToBoxAdapter(child: SizedBox(height: 32)),
                   ],
                 ),
     );
   }
 
-  /// 班级输入区域
   Widget _classInputWidget(ClassTimetableState state, ClassTimetableController controller, ColorScheme scheme) {
     return SliverToBoxAdapter(
       child: Padding(
@@ -118,7 +111,6 @@ class _ClassTimetablePageState extends ConsumerState<ClassTimetablePage> {
     );
   }
 
-  /// 课表网格（对齐 schedule-getx 的 CurriculumComponent 表格风格）
   Widget _gridWidget(ClassTimetableState state) {
     final grid = _buildGrid(state.timetable);
     final scheme = Theme.of(context).colorScheme;
@@ -175,7 +167,6 @@ class _ClassTimetablePageState extends ConsumerState<ClassTimetablePage> {
     );
   }
 
-  /// 课表行
   Widget _gridRow(Map<int, Map<int, List<TimetableEntry>>> grid, int section, ColorScheme scheme) {
     return Container(
       decoration: BoxDecoration(
@@ -222,7 +213,6 @@ class _ClassTimetablePageState extends ConsumerState<ClassTimetablePage> {
     );
   }
 
-  /// 课程单元格
   Widget _cellWidget(List<TimetableEntry> entries, ColorScheme scheme) {
     if (entries.isEmpty) {
       return const SizedBox(height: 70);
@@ -277,14 +267,12 @@ class _ClassTimetablePageState extends ConsumerState<ClassTimetablePage> {
     );
   }
 
-  /// 空状态
   Widget _emptyWidget() {
     return const SliverFillRemaining(
       child: AppEmptyWidget(message: '请输入班级名称并查询'),
     );
   }
 
-  /// 课程详情弹窗（对齐 schedule-getx 的 showCourseDetail）
   void _showCourseDetail(TimetableEntry entry) {
     showDialog(
       context: context,

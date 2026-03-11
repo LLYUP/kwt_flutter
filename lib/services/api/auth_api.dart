@@ -55,6 +55,8 @@ class AuthApi {
       ),
     );
     final html = ResponseHelper.decodeHtmlResponse(response);
+
+
     final failed = RegExp(r'(验证码|密码错误|失败|不存在|错误)', caseSensitive: false).hasMatch(html);
     return !failed;
   }
@@ -101,7 +103,7 @@ class AuthApi {
       
       String msg = '';
       
-      // Try extracting message via regex because unquoted keys like {message: "..."} 
+      // 解析返回的 JSON 消息（支持未引用键值对）
       final msgMatch = RegExp('message\\s*:\\s*["\']([^"\']+)["\']').firstMatch(html) 
                     ?? RegExp('"message"\\s*:\\s*["\']([^"\']+)["\']').firstMatch(html);
                     
@@ -136,5 +138,53 @@ class AuthApi {
         ),
       );
     } catch (_) {}
+  }
+
+  Future<Map<String, dynamic>> changePassword({
+    required String account,
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final params = {
+      'oldpassword': oldPassword,
+      'password1': newPassword,
+      'password2': newPassword,
+      'button4': '保存',
+      'upt': '1',
+    };
+    
+    try {
+      final response = await dio.post(
+        ApiEndpoints.changePassword,
+        data: params,
+        options: Options(
+          responseType: ResponseType.bytes,
+          contentType: Headers.formUrlEncodedContentType,
+          headers: {'Referer': '$baseUrl/'},
+          validateStatus: (status) => true,
+        ),
+      );
+      
+      final html = ResponseHelper.decodeHtmlResponse(response);
+      
+      final bool isSuccess = html.contains('成功') || html.contains('重新登录');
+      
+      String msg = '';
+      if (isSuccess) {
+        msg = '密码修改成功，请重新登录';
+      } else {
+        final alertMatch = RegExp(r"alert\(['\u0022](.*?)['\u0022]\)").firstMatch(html);
+        if (alertMatch != null) {
+          msg = alertMatch.group(1)!;
+        } else {
+          msg = '密码修改失败，请检查输入或稍后重试。';
+        }
+      }
+
+      return {'success': isSuccess, 'message': msg};
+    } catch (e) {
+      print('--- [DEBUG] changePassword HTTP catch exception: $e ---');
+      return {'success': false, 'message': '网络请求失败: $e'};
+    }
   }
 }

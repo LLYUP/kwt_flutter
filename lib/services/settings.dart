@@ -1,7 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kwt_flutter/config/app_config.dart';
 
-// 本地设置服务：封装 SharedPreferences 的键值读写（带缓存）
 class SettingsService {
   static const _keyTerm = 'kwt.term';
   static const _keyStartDate = 'kwt.startDate';
@@ -12,6 +11,7 @@ class SettingsService {
   static const _keyRememberPassword = 'kwt.rememberPassword';
   static const _keySavedPassword = 'kwt.savedPassword';
   static const _keyRememberedStudentId = 'kwt.rememberedStudentId';
+  static const _keyCustomServerUrl = 'kwt.customServerUrl';
 
   /// 缓存的 SharedPreferences 实例
   static SharedPreferences? _prefs;
@@ -85,7 +85,6 @@ class SettingsService {
     await sp.remove(_keyStudentName);
   }
 
-  // 网络环境相关方法
   Future<void> saveNetworkEnvironment(String environment) async {
     final sp = await _sp;
     await sp.setString(_keyNetworkEnvironment, environment);
@@ -100,12 +99,22 @@ class SettingsService {
     final environment = await getNetworkEnvironment();
     if (environment == 'internet') {
       return NetworkEnvironment.internet.baseUrl;
+    } else if (environment == 'custom') {
+      return await getCustomServerUrl() ?? '';
     }
-    // 默认为校园网
     return NetworkEnvironment.intranet.baseUrl;
   }
 
-  // 记住密码与本地保存的密码
+  Future<void> saveCustomServerUrl(String url) async {
+    final sp = await _sp;
+    await sp.setString(_keyCustomServerUrl, url);
+  }
+
+  Future<String?> getCustomServerUrl() async {
+    final sp = await _sp;
+    return sp.getString(_keyCustomServerUrl);
+  }
+
   Future<void> setRememberPassword(bool remember) async {
     final sp = await _sp;
     await sp.setBool(_keyRememberPassword, remember);
@@ -130,7 +139,6 @@ class SettingsService {
     return sp.getString(_keySavedPassword);
   }
 
-  // 记住的学号（与"记住账号与密码"联动）
   Future<void> saveRememberedStudentId(String studentId) async {
     final sp = await _sp;
     await sp.setString(_keyRememberedStudentId, studentId);

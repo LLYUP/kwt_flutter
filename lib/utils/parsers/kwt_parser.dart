@@ -4,10 +4,8 @@ import 'package:kwt_flutter/models/models.dart';
 
 /// 轻悦校园 HTML 解析器：负责将所有后端返回的 HTML 解析为结构化模型
 class KwtParser {
-  /// 单例防止实例化
   KwtParser._();
 
-  /// 解析学期选项
   static List<String> parseTermOptions(String html) {
     final document = html_parser.parse(html);
     final Set<String> termSet = {};
@@ -41,7 +39,6 @@ class KwtParser {
     return termSet.toList();
   }
 
-  /// 解析个人信息
   static Map<String, String> parseProfileInfo(String html) {
     final doc = html_parser.parse(html);
     String name = '';
@@ -65,7 +62,6 @@ class KwtParser {
     return {'name': name};
   }
 
-  /// 提取通用表格行数据
   static List<List<String>> extractTableRows(String html) {
     final document = html_parser.parse(html);
     final rows = <List<String>>[];
@@ -79,7 +75,6 @@ class KwtParser {
     return rows;
   }
 
-  /// 解析成绩页面
   static List<GradeEntry> parseGrades(String html) {
     final document = html_parser.parse(html);
     final table = document.querySelector('#dataList') ?? document.querySelector('table');
@@ -133,7 +128,6 @@ class KwtParser {
     return entries;
   }
 
-  /// 解析个人课表
   static List<TimetableEntry> parsePersonalTimetableStructured(String html) {
     final document = html_parser.parse(html);
     final tbody = document.querySelector('table tbody');
@@ -212,7 +206,6 @@ class KwtParser {
     return result;
   }
 
-  /// 解析等级考试
   static List<ExamLevelEntry> parseExamLevel(String html) {
     final document = html_parser.parse(html);
     final table = document.querySelector('#dataList');
@@ -238,7 +231,6 @@ class KwtParser {
     return result;
   }
 
-  /// 解析班级课表
   static List<TimetableEntry> parseClassTimetableStructured(String html) {
     final document = html_parser.parse(html);
     final table = document.querySelector('#timetable');
@@ -356,7 +348,6 @@ class KwtParser {
     return result;
   }
 
-  /// 解析教材信息
   static List<TextbookEntry> parseTextbooks(String html) {
     final document = html_parser.parse(html);
     final table = document.querySelector('table.layui-table');
@@ -389,7 +380,6 @@ class KwtParser {
     return result;
   }
 
-  /// 解析教室搜索列表
   static List<Map<String, String>> parseClassroomSearch(String html) {
     final document = html_parser.parse(html);
     final table = document.querySelector('table.layui-table');
@@ -414,7 +404,6 @@ class KwtParser {
     return result;
   }
 
-  /// 解析培养方案列表
   static List<TrainingPlanEntry> parseTrainingPlan(String html) {
     final document = html_parser.parse(html);
     final table = document.querySelector('table.layui-table');
@@ -446,7 +435,6 @@ class KwtParser {
     return result;
   }
 
-  /// 解析选课结果列表
   static List<CourseSelectionEntry> parseCourseSelection(String html) {
     final document = html_parser.parse(html);
     final table = document.querySelector('table.layui-table');
@@ -475,7 +463,6 @@ class KwtParser {
     return result;
   }
 
-  /// 解析消息通知列表
   static List<MessageNotificationEntry> parseMessageNotifications(String html) {
     final document = html_parser.parse(html);
     final table = document.querySelector('#dataList') ?? document.querySelector('table.layui-table');
@@ -499,7 +486,6 @@ class KwtParser {
     return result;
   }
 
-  /// 解析选课轮次列表
   static List<CourseSelectionRoundEntry> parseCourseSelectionRounds(String html) {
     final document = html_parser.parse(html);
     final table = document.querySelector('table');
@@ -537,7 +523,6 @@ class KwtParser {
     return result;
   }
 
-  /// 从 selectBottom 页面解析通选课类别下拉选项
   static List<MapEntry<String, String>> parseCourseCategories(String html) {
     final document = html_parser.parse(html);
     final select = document.querySelector('select#szjylb');

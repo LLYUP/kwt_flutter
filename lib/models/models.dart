@@ -1,4 +1,3 @@
-// 课表条目模型
 class TimetableEntry {
   TimetableEntry({
     required this.courseName,
@@ -15,13 +14,12 @@ class TimetableEntry {
   final String teacher;
   final String credits;
   final String location;
-  final String sectionText; // 如 01~02节
-  final String weekText; // 如 第1周 或 1-12周/单双周
-  final int dayOfWeek; // 1-7
-  final int sectionIndex; // 第几大节（1-5），0 表示未知
+  final String sectionText;
+  final String weekText;
+  final int dayOfWeek;
+  final int sectionIndex;
 }
 
-// 成绩条目模型
 class GradeEntry {
   GradeEntry({
     required this.term,
@@ -49,12 +47,11 @@ class GradeEntry {
   final String gpa;
   final String examType;
   final String examNature;
-  final String courseAttr; // 课程属性：必修/限选/任选/公选...
-  final String courseNature; // 课程性质：公共课/平台课程/专业课程...
-  final String generalType; // 通选课类别/其它分类
+  final String courseAttr;
+  final String courseNature;
+  final String generalType;
 }
 
-// 等级考试条目模型
 class ExamLevelEntry {
   ExamLevelEntry({
     required this.course,
@@ -104,7 +101,6 @@ class TextbookEntry {
   final String orderStatus;
 }
 
-// 培养方案条目模型
 class TrainingPlanEntry {
   TrainingPlanEntry({
     required this.index,
@@ -120,20 +116,19 @@ class TrainingPlanEntry {
     required this.isExam,
   });
 
-  final String index;         // 序号
-  final String term;          // 开课学期
-  final String courseCode;    // 课程编号
-  final String courseName;    // 课程名称
-  final String department;    // 开课单位
-  final String credits;       // 学分
-  final String totalHours;    // 总学时
-  final String examType;      // 考核方式
-  final String courseNature;  // 课程性质（公共课/平台课程/专业课程）
-  final String courseAttr;    // 课程属性（必修/限选/任选）
-  final String isExam;        // 是否考试
+  final String index;
+  final String term;
+  final String courseCode;
+  final String courseName;
+  final String department;
+  final String credits;
+  final String totalHours;
+  final String examType;
+  final String courseNature;
+  final String courseAttr;
+  final String isExam;
 }
 
-// 选课结果条目模型
 class CourseSelectionEntry {
   CourseSelectionEntry({
     required this.index,
@@ -146,17 +141,16 @@ class CourseSelectionEntry {
     required this.courseNature,
   });
 
-  final String index;         // 序号
-  final String courseName;    // 课程名称
-  final String courseCode;    // 课程编号
-  final String teacher;       // 上课教师
-  final String totalHours;    // 总学时
-  final String credits;       // 学分
-  final String courseAttr;    // 课程属性
-  final String courseNature;  // 课程性质
+  final String index;
+  final String courseName;
+  final String courseCode;
+  final String teacher;
+  final String totalHours;
+  final String credits;
+  final String courseAttr;
+  final String courseNature;
 }
 
-// 消息通知条目模型
 class MessageNotificationEntry {
   MessageNotificationEntry({
     required this.index,
@@ -165,13 +159,12 @@ class MessageNotificationEntry {
     required this.pushTime,
   });
 
-  final String index;         // 序号
-  final String businessName;  // 业务名称
-  final String content;       // 消息内容
-  final String pushTime;      // 推送时间
+  final String index;
+  final String businessName;
+  final String content;
+  final String pushTime;
 }
 
-// 选课轮次条目模型
 class CourseSelectionRoundEntry {
   CourseSelectionRoundEntry({
     required this.term,
@@ -182,15 +175,14 @@ class CourseSelectionRoundEntry {
     this.jrxkParam3 = '',
   });
 
-  final String term;          // 学年学期
-  final String name;          // 选课名称
-  final String timeRange;     // 选课时间
-  final String jrxkParam1;   // jrxk 参数1
-  final String jrxkParam2;   // jrxk 参数2 (选课轮次ID)
-  final String jrxkParam3;   // jrxk 参数3
+  final String term;
+  final String name;
+  final String timeRange;
+  final String jrxkParam1;
+  final String jrxkParam2;
+  final String jrxkParam3;
 }
 
-// 可选课程条目模型（选课中心 JSON API 返回）
 class ElectiveCourseEntry {
   ElectiveCourseEntry({
     required this.courseCode,
@@ -212,23 +204,23 @@ class ElectiveCourseEntry {
     this.isSelected = false,
   });
 
-  final String courseCode;      // 课程编号 (kch)
-  final String courseName;      // 课程名称 (kcmc)
-  final double credits;         // 学分 (xf)
-  final int totalHours;         // 总学时 (zxs)
-  final String teacher;         // 授课教师 (skls)
-  final String classTime;       // 上课时间 (sksj)
-  final String classLocation;   // 上课地点 (skdd)
-  final String campus;          // 校区 (xqmc)
-  final int enrolledCount;      // 已选人数 (xkrs)
-  final int remainingCount;     // 剩余人数 (syrs)
-  final int maxCapacity;        // 最大容量 (pkrs)
-  final String category;        // 课程分类 (szkcflmc)
-  final String courseType;      // 课程性质 (kcxzmc)
-  final bool isNetworkCourse;   // 是否网络课
-  final String jx0404id;        // 选课操作 ID
-  final String jx02id;          // 课程方案 ID
-  final bool isSelected;        // 是否已选 (xkzt=1)
+  final String courseCode;
+  final String courseName;
+  final double credits;
+  final int totalHours;
+  final String teacher;
+  final String classTime;
+  final String classLocation;
+  final String campus;
+  final int enrolledCount;
+  final int remainingCount;
+  final int maxCapacity;
+  final String category;
+  final String courseType;
+  final bool isNetworkCourse;
+  final String jx0404id;
+  final String jx02id;
+  final bool isSelected;
 
   factory ElectiveCourseEntry.fromJson(Map<String, dynamic> json) {
     final syrsRaw = json['syrs'];
