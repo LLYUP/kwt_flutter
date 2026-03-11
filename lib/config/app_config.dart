@@ -36,7 +36,7 @@ class AppConfig {
   
   /// 应用基础信息
   static const String appName = '轻悦校园';
-  static const String appVersion = '3.7.4';
+  static const String appVersion = '3.7.3';
   static const String appDescription = '轻悦校园教务系统查询应用';
   
   /// GitHub 配置（用于检查更新）
